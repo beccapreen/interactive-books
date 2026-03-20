@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handbook for Legal Innovation — Interactive Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #1a1a2e;
+    --surface: #222240;
+    --surface2: #2a2a4a;
+    --accent1: #30b8c5;
+    --accent2: #6c63ff;
+    --accent3: #ff6b9d;
+    --accent4: #ffd93d;
+    --accent5: #6bcb77;
+    --accent6: #ff8a5c;
+    --text: #e8e8f0;
+    --text-dim: #9999b8;
+    --text-bright: #ffffff;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Lexend', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 17px;
+    letter-spacing: 0.02em;
+    min-height: 100vh;
+  }
+
+  /* ---- LAYOUT ---- */
+  .app {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ---- SIDEBAR ---- */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 28px 0;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .sidebar-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent1);
+    padding: 0 24px 16px;
+  }
+
+  .part-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent4);
+    padding: 20px 24px 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-dim);
+  }
+
+  .nav-item:hover {
+    background: rgba(48,184,197,0.08);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background: rgba(48,184,197,0.12);
+    border-left-color: var(--accent1);
+    color: var(--text-bright);
+    font-weight: 500;
+  }
+
+  .nav-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ---- MAIN ---- */
+  .main {
+    padding: 40px 56px 80px;
+    max-width: 900px;
+    overflow-y: auto;
+  }
+
+  .chapter-header {
+    margin-bottom: 36px;
+  }
+
+  .chapter-num {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent1);
+    margin-bottom: 8px;
+  }
+
+  .chapter-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1.3;
+    margin-bottom: 12px;
+  }
+
+  .chapter-subtitle {
+    font-size: 16px;
+    color: var(--text-dim);
+    font-weight: 300;
+    line-height: 1.6;
+  }
+
+  /* ---- KEY POINTS CARDS ---- */
+  .points-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .point-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    border-left: 4px solid var(--accent1);
+    transition: all 0.25s;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .point-card:hover {
+    background: var(--surface2);
+    transform: translateX(4px);
+  }
+
+  .point-card.expanded {
+    background: var(--surface2);
+  }
+
+  .point-card .point-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .point-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-bright);
+    line-height: 1.5;
+  }
+
+  .point-toggle {
+    font-size: 20px;
+    color: var(--accent1);
+    flex-shrink: 0;
+    transition: transform 0.3s;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(48,184,197,0.1);
+  }
+
+  .point-card.expanded .point-toggle {
+    transform: rotate(45deg);
+  }
+
+  .point-detail {
+    display: none;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    color: var(--text);
+    font-weight: 300;
+    line-height: 2;
+    font-size: 16px;
+  }
+
+  .point-card.expanded .point-detail {
+    display: block;
+  }
+
+  .point-detail strong {
+    color: var(--accent1);
+    font-weight: 500;
+  }
+
+  .point-detail ul {
+    padding-left: 20px;
+    margin: 8px 0;
+  }
+
+  .point-detail li {
+    margin-bottom: 6px;
+  }
+
+  /* ---- TAGS ---- */
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-right: 6px;
+    margin-top: 10px;
+  }
+
+  .tag-strategy { background: rgba(108,99,255,0.2); color: #a29bfe; }
+  .tag-people { background: rgba(255,107,157,0.2); color: #ff6b9d; }
+  .tag-tech { background: rgba(48,184,197,0.2); color: #30b8c5; }
+  .tag-culture { background: rgba(255,217,61,0.2); color: #ffd93d; }
+  .tag-client { background: rgba(107,203,119,0.2); color: #6bcb77; }
+  .tag-method { background: rgba(255,138,92,0.2); color: #ff8a5c; }
+
+  /* ---- PROGRESS BAR ---- */
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 320px; right: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.05);
+    z-index: 100;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    transition: width 0.3s;
+  }
+
+  /* ---- OVERVIEW GRID ---- */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+
+  .overview-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    cursor: pointer;
+    transition: all 0.25s;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .overview-card:hover {
+    background: var(--surface2);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+
+  .overview-card .oc-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+
+  .overview-card .oc-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+
+  .overview-card .oc-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 300;
+    line-height: 1.6;
+  }
+
+  /* ---- CHECKLIST ---- */
+  .checklist {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-top: 24px;
+    border: 1px dashed rgba(48,184,197,0.3);
+  }
+
+  .checklist-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent4);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 1.7;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .checklist-item input[type="checkbox"] {
+    margin-top: 5px;
+    accent-color: var(--accent1);
+    width: 18px; height: 18px;
+    flex-shrink: 0;
+  }
+
+  .checklist-item.checked span {
+    text-decoration: line-through;
+    color: var(--text-dim);
+  }
+
+  /* ---- CALLOUT ---- */
+  .callout {
+    background: rgba(48,184,197,0.08);
+    border-left: 4px solid var(--accent1);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 20px 24px;
+    margin: 20px 0;
+    font-size: 15px;
+    line-height: 1.8;
+    font-weight: 300;
+    color: var(--text);
+  }
+
+  .callout em {
+    color: var(--accent1);
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  /* ---- SEARCH ---- */
+  .search-box {
+    padding: 0 24px 16px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.2);
+    color: var(--text);
+    font-family: 'Lexend', sans-serif;
+    font-size: 13px;
+    outline: none;
+  }
+
+  .search-box input::placeholder { color: var(--text-dim); }
+  .search-box input:focus { border-color: var(--accent1); }
+
+  .nav-item.hidden { display: none; }
+
+  /* ---- MOBILE ---- */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar {
+      position: fixed;
+      left: -320px;
+      z-index: 200;
+      width: 320px;
+      transition: left 0.3s;
+    }
+    .sidebar.open { left: 0; }
+    .main { padding: 24px 20px 80px; }
+    .overview-grid { grid-template-columns: 1fr; }
+    .progress-bar { left: 0; }
+    .menu-toggle { display: block !important; }
+  }
+
+  .menu-toggle {
+    display: none;
+    position: fixed;
+    top: 12px; left: 12px;
+    z-index: 300;
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-bright);
+    font-size: 22px;
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ---- Book title block ---- */
+  .book-header {
+    text-align: center;
+    padding: 16px 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 8px;
+  }
+
+  .book-header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-bright);
+    line-height: 1.4;
+  }
+
+  .book-header p {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* color per chapter border */
+  .border-1 { border-left-color: #6c63ff; }
+  .border-2 { border-left-color: #ff6b9d; }
+  .border-3 { border-left-color: #30b8c5; }
+  .border-4 { border-left-color: #ffd93d; }
+  .border-5 { border-left-color: #6bcb77; }
+  .border-6 { border-left-color: #ff8a5c; }
+  .border-7 { border-left-color: #a29bfe; }
+  .border-8 { border-left-color: #ff6b9d; }
+  .border-9 { border-left-color: #30b8c5; }
+  .border-10 { border-left-color: #ffd93d; }
+  .border-11 { border-left-color: #6bcb77; }
+  .border-12 { border-left-color: #ff8a5c; }
+  .border-13 { border-left-color: #6c63ff; }
+  .border-14 { border-left-color: #a29bfe; }
+</style>
+</head>
+<body>
+
+<button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">&#9776;</button>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="book-header">
+      <h1>The Handbook for<br>Legal Innovation</h1>
+      <p>Nicola Shaver</p>
+    </div>
+
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search chapters..." oninput="filterNav()">
+    </div>
+
+    <div class="nav-item active" data-chapter="overview" onclick="showChapter('overview')">
+      <span class="nav-dot" style="background:var(--accent1)"></span> Overview
+    </div>
+
+    <div class="part-label">Part 1 &mdash; Building your Function</div>
+
+    <div class="nav-item" data-chapter="ch1" onclick="showChapter('ch1')">
+      <span class="nav-dot" style="background:#6c63ff"></span> 1. The Impetus for Change
+    </div>
+    <div class="nav-item" data-chapter="ch2" onclick="showChapter('ch2')">
+      <span class="nav-dot" style="background:#ff6b9d"></span> 2. Establishing a Vision
+    </div>
+    <div class="nav-item" data-chapter="ch3" onclick="showChapter('ch3')">
+      <span class="nav-dot" style="background:#30b8c5"></span> 3. Strategies for Culture Change
+    </div>
+    <div class="nav-item" data-chapter="ch4" onclick="showChapter('ch4')">
+      <span class="nav-dot" style="background:#ffd93d"></span> 4. Planning for the Future
+    </div>
+    <div class="nav-item" data-chapter="ch5" onclick="showChapter('ch5')">
+      <span class="nav-dot" style="background:#6bcb77"></span> 5. Building a Portfolio
+    </div>
+    <div class="nav-item" data-chapter="ch6" onclick="showChapter('ch6')">
+      <span class="nav-dot" style="background:#ff8a5c"></span> 6. Determining Priorities
+    </div>
+    <div class="nav-item" data-chapter="ch7" onclick="showChapter('ch7')">
+      <span class="nav-dot" style="background:#a29bfe"></span> 7. Innovation Function &amp; Roles
+    </div>
+
+    <div class="part-label">Part 2 &mdash; Methodologies for Change</div>
+
+    <div class="nav-item" data-chapter="ch8" onclick="showChapter('ch8')">
+      <span class="nav-dot" style="background:#ff6b9d"></span> 8. Supercharging Strategy
+    </div>
+    <div class="nav-item" data-chapter="ch9" onclick="showChapter('ch9')">
+      <span class="nav-dot" style="background:#30b8c5"></span> 9. Change Management
+    </div>
+    <div class="nav-item" data-chapter="ch10" onclick="showChapter('ch10')">
+      <span class="nav-dot" style="background:#ffd93d"></span> 10. Communications &amp; Storytelling
+    </div>
+    <div class="nav-item" data-chapter="ch11" onclick="showChapter('ch11')">
+      <span class="nav-dot" style="background:#6bcb77"></span> 11. Problem-Solving &amp; Process
+    </div>
+    <div class="nav-item" data-chapter="ch12" onclick="showChapter('ch12')">
+      <span class="nav-dot" style="background:#ff8a5c"></span> 12. Ways of Working
+    </div>
+    <div class="nav-item" data-chapter="ch13" onclick="showChapter('ch13')">
+      <span class="nav-dot" style="background:#6c63ff"></span> 13. Product Management
+    </div>
+    <div class="nav-item" data-chapter="ch14" onclick="showChapter('ch14')">
+      <span class="nav-dot" style="background:#a29bfe"></span> 14. Incentives &amp; Adoption
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="mainContent">
+
+    <!-- OVERVIEW -->
+    <section id="sec-overview" class="chapter-section">
+      <div class="chapter-header">
+        <div class="chapter-num">Dashboard</div>
+        <div class="chapter-title">The Handbook for Legal Innovation</div>
+        <div class="chapter-subtitle">By Nicola Shaver &mdash; An interactive guide to driving innovation, culture change, and digital transformation in legal organisations. Click any chapter to explore its key takeaways.</div>
+      </div>
+
+      <div class="overview-grid">
+        <div class="overview-card" onclick="showChapter('ch1')">
+          <div class="oc-icon">&#9889;</div>
+          <div class="oc-title">Why Change Now?</div>
+          <div class="oc-desc">Client demands, ALSPs, competitive forces driving urgency</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch2')">
+          <div class="oc-icon">&#127919;</div>
+          <div class="oc-title">Start with Why</div>
+          <div class="oc-desc">Vision, purpose, and Sinek's Golden Circle for legal</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch3')">
+          <div class="oc-icon">&#9881;</div>
+          <div class="oc-title">The Three Es</div>
+          <div class="oc-desc">Education, Engagement, Execution &mdash; the core strategy</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch4')">
+          <div class="oc-icon">&#128200;</div>
+          <div class="oc-title">Three Horizons</div>
+          <div class="oc-desc">Planning short, medium, and long-term innovation</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch9')">
+          <div class="oc-icon">&#128260;</div>
+          <div class="oc-title">Managing Change</div>
+          <div class="oc-desc">The change curve, Kotter's 8 steps, resistance</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch11')">
+          <div class="oc-icon">&#128161;</div>
+          <div class="oc-title">Design Thinking</div>
+          <div class="oc-desc">Empathize, Define, Ideate, Prototype, Test</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch13')">
+          <div class="oc-icon">&#128230;</div>
+          <div class="oc-title">Products in Law</div>
+          <div class="oc-desc">JTBD, Business Model Canvas, Build/Partner/Buy</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch14')">
+          <div class="oc-icon">&#128640;</div>
+          <div class="oc-title">Driving Adoption</div>
+          <div class="oc-desc">Status quo bias, the 9x effect, adoption lifecycle</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <em>Core thesis:</em> Innovation in law is not just about technology &mdash; it requires culture change through <em>education</em>, <em>engagement</em>, and <em>execution</em>. Success = Adoption, not rollout.
+      </div>
+    </section>
+
+    <!-- CH 1 -->
+    <section id="sec-ch1" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 1</div>
+        <div class="chapter-title">The Impetus for Change</div>
+        <div class="chapter-subtitle">Why change, and why now? The market forces making innovation non-optional.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Clients now expect innovation</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            91% of corporate clients surveyed consider it important that panel law firms leverage innovative technology. RFPs now routinely ask about technology use, service delivery models, and digital transformation capabilities. Firms that can't answer these questions credibly risk losing panel positions.
+          </div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">ALSPs are capturing market share</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Alternative Legal Service Providers grew from <strong>$8.4bn</strong> in 2015 to over <strong>$14bn</strong>. 79% of US law firms and 72% of US corporations now use ALSPs. One large firm leader admitted ALSPs had stolen 8% of annual revenue for two consecutive years.
+          </div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">In-house teams are keeping more work</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Corporate legal departments are increasingly sophisticated, using technology and legal operations (CLOC) to handle work in-house. This means less work goes to outside counsel, so firms must fight harder for a shrinking pie using new tools and approaches.
+          </div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">LegalTech investment is booming</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            LegalTech investment topped <strong>$41bn by mid-2021</strong>, a five-fold increase from 2009. There are now over 2,000 legal technology solutions globally. The market is rich with tools for automation, AI, analytics, and more.
+          </div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Structural barriers remain the real challenge</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Money allocated to innovation teams means little if structural barriers aren't addressed. Without changing how legal work is defined, accepting non-lawyer professionals, and being willing to explore new billing models, leading change is an uphill battle requiring <strong>stamina, resilience, vision, and strategy</strong>.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-strategy">Strategy</div>
+      <div class="tag tag-client">Client Pressure</div>
+      <div class="tag tag-tech">LegalTech</div>
+    </section>
+
+    <!-- CH 2 -->
+    <section id="sec-ch2" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 2</div>
+        <div class="chapter-title">Establishing a Vision</div>
+        <div class="chapter-subtitle">Start with "Why" &mdash; define your innovation function's purpose before developing strategy.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-2" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Sinek's Golden Circle: Why &rarr; How &rarr; What</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Companies that lead with <strong>Why</strong> inspire people. Your innovation team's "Why" should be about <em>transformation</em> &mdash; not a list of projects. Example: "We help transform the practice of law to make it better &mdash; for clients, for consumers of legal services, and for those who work in the industry."
+          </div>
+        </div>
+        <div class="point-card border-2" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Vision should be durable, not tied to specific actions</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            If your mission references specific actions (like "streamline documents"), it becomes obsolete as the landscape shifts. A purpose-driven vision allows you to evolve. Apple's vision about "challenging the status quo" works across any product line &mdash; your legal innovation vision should do the same.
+          </div>
+        </div>
+        <div class="point-card border-2" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Get your team involved in defining the vision</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Speak to firm management and invested partners to understand why they believe an innovation function matters. Then ask your team what drives them &mdash; find the common thread. Involvement from the beginning means you won't face poor adoption later.
+          </div>
+        </div>
+      </div>
+      <div class="checklist">
+        <div class="checklist-title">Vision Checklist</div>
+        <label class="checklist-item" onclick="this.classList.toggle('checked')"><input type="checkbox"><span>Speak to firm leadership about why innovation matters</span></label>
+        <label class="checklist-item" onclick="this.classList.toggle('checked')"><input type="checkbox"><span>Articulate your team's "Why" in one sentence</span></label>
+        <label class="checklist-item" onclick="this.classList.toggle('checked')"><input type="checkbox"><span>Involve your team in defining the vision</span></label>
+        <label class="checklist-item" onclick="this.classList.toggle('checked')"><input type="checkbox"><span>Ensure the vision is not tied to specific actions or products</span></label>
+      </div>
+    </section>
+
+    <!-- CH 3 -->
+    <section id="sec-ch3" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 3</div>
+        <div class="chapter-title">Innovation Strategies for Culture Change</div>
+        <div class="chapter-subtitle">The Three Es &mdash; the book's core strategic framework.</div>
+      </div>
+      <div class="callout">
+        <em>Success = Adoption</em>, not rollout. Rolling something out doesn't mean innovation has happened. People must actually use it.
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Education &mdash; Build urgency and awareness</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            The critical first step. Most firms dramatically underestimate the importance of education. Key mechanisms:
+            <ul>
+              <li>Firm-wide newsletters on market changes affecting clients</li>
+              <li>CLE series featuring client legal ops voices</li>
+              <li>Summer/fall associate programming on the business of law</li>
+              <li>"How to speak to clients about..." training for partners</li>
+            </ul>
+            <strong>Don't assume young lawyers are tech-savvy.</strong> Ubiquitous personal tech can actually stifle interest in workplace tools.
+          </div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Engagement &mdash; Involve people in solutions</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            The best way to drive adoption is to involve end users in developing, configuring, and implementing solutions. Key tactics:
+            <ul>
+              <li>Involve end users during technology demos</li>
+              <li>Run pilots and POCs with engaged practitioners</li>
+              <li>Bake innovation contribution into performance reviews</li>
+              <li>Create internal "certifications" for innovation milestones</li>
+            </ul>
+            Deciding to invest in technology <em>without</em> engaging lawyers is a sure-fire way to end up with a graveyard of unused tools.
+          </div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Execution &mdash; Get things done and prove value</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Execution is more than implementation &mdash; it means rolling out successfully, communicating wins, managing change, and tracking adoption. The three Es work as <strong>iterative cycles</strong> that amplify each time they revolve. Educational programming circulates news of executed projects, which generates engagement for the next cycle.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-strategy">Core Framework</div>
+      <div class="tag tag-culture">Culture Change</div>
+    </section>
+
+    <!-- CH 4 -->
+    <section id="sec-ch4" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 4</div>
+        <div class="chapter-title">Planning for the Future</div>
+        <div class="chapter-subtitle">Three Horizons theory and the Innovation Ambitions Matrix.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Three Horizons of Growth</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <strong>Horizon 1 (1-3 years):</strong> Incremental improvements to core business. E.g., automating document suites for high-volume work.<br>
+            <strong>Horizon 2 (3-5 years):</strong> Step-change improvements, new service lines. E.g., offering practice innovation consulting to clients.<br>
+            <strong>Horizon 3 (5-12 years):</strong> Wholly new opportunities to reinvent the business. E.g., law firm product subsidiaries operating under a different business model.
+          </div>
+        </div>
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">The 70-20-10 resource allocation rule</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Best practice: allocate roughly <strong>70%</strong> of innovation resources to core/sustaining innovation, <strong>20%</strong> to adjacent innovation, and <strong>10%</strong> to transformational/disruptive innovation. If you focus only on short-term, you fail to protect the organisation long-term. If you focus only on radical innovation, you increase vulnerability now.
+          </div>
+        </div>
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Innovation Ambitions Matrix</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Maps three horizons against "where to play" (existing vs. adjacent vs. new markets) and "how to win" (existing vs. new offerings). Useful for reviewing whether your portfolio of initiatives is skewed too heavily towards one type. Ask: are we only doing H1 work, or do we also have transformational bets in play?
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-strategy">Strategy</div>
+      <div class="tag tag-method">Framework</div>
+    </section>
+
+    <!-- CH 5 -->
+    <section id="sec-ch5" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 5</div>
+        <div class="chapter-title">Building a Portfolio of Initiatives</div>
+        <div class="chapter-subtitle">How to audit your environment and identify the right projects.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Start with a Knowledge &amp; Innovation Audit</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Survey your constituents across multiple persona groups. Ask about openness to knowledge sharing, familiarity with innovation concepts, awareness of existing tools, client feedback on service delivery, and pain points. This gives you a current-state picture and identifies where to focus.
+          </div>
+        </div>
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">SWOT Analysis per practice area</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Approach it practice-by-practice. For each: What are their strengths? What content could be productised? Where are they falling behind? Are there opportunities for client-facing innovation? This reveals the most fruitful areas for your team's efforts.
+          </div>
+        </div>
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Listening programs &mdash; not a one-off</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Audits shouldn't be one-and-done. Periodically canvass practices to "take the temperature" &mdash; build relationships that generate regular feedback on current and future projects.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-strategy">Strategy</div>
+      <div class="tag tag-people">People</div>
+    </section>
+
+    <!-- CH 6 -->
+    <section id="sec-ch6" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 6</div>
+        <div class="chapter-title">Determining Priorities</div>
+        <div class="chapter-subtitle">How to categorise and prioritise your project portfolio.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-6" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">The Maker's Matrix</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Classifies projects along two dimensions: the type of legal activity (Legal Services, Legal Operations, Legal Advice) and the nature of the initiative (Data, Business Models, Thought Leadership). Helps identify what talent each project requires and where it fits in your strategy.
+          </div>
+        </div>
+        <div class="point-card border-6" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Value vs. Effort framework</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Evaluate every project by: How many lawyers/practices does it impact? Is the client driving it? Does it align with firm strategy? Could it drive additional business? Then weigh against the resources, time, and effort required. Four categories emerge:
+            <ul>
+              <li><strong>Quick wins:</strong> High value, low effort &mdash; do these first</li>
+              <li><strong>Major projects:</strong> High value, high effort &mdash; plan carefully</li>
+              <li><strong>Nice-to-haves:</strong> Low value, low effort &mdash; if time allows</li>
+              <li><strong>Distractions:</strong> Low value, high effort &mdash; avoid</li>
+            </ul>
+          </div>
+        </div>
+        <div class="point-card border-6" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Business planning by quarter</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Break your annual plan into quarters. Determine when each project kicks off so you avoid having too many running concurrently. Check resource allocation across the year &mdash; without upfront planning, teams burn out and can't execute well on anything.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-strategy">Prioritisation</div>
+      <div class="tag tag-method">Framework</div>
+    </section>
+
+    <!-- CH 7 -->
+    <section id="sec-ch7" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 7</div>
+        <div class="chapter-title">Creating and Growing an Innovation Function</div>
+        <div class="chapter-subtitle">Roles, team structures, and hiring for innovation.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-7" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Key roles in innovation teams</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <ul>
+              <li><strong>CKO / Chief Innovation Officer:</strong> 15-20 years experience, strategic leadership, political navigation</li>
+              <li><strong>Director of KM / Innovation:</strong> Strategy, recruiting, culture building</li>
+              <li><strong>KM Lawyers:</strong> Bridge between practice and innovation</li>
+              <li><strong>Legal Technologists:</strong> Coding, SQL, automation, data viz, ML</li>
+              <li><strong>Solutions Architect / Product Manager:</strong> For client-facing products</li>
+              <li><strong>Data Analysts:</strong> Increasingly critical for dashboards and insights</li>
+            </ul>
+          </div>
+        </div>
+        <div class="point-card border-7" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Hire for curiosity and making, not just legal pedigree</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            The best innovation team members are <strong>makers</strong> &mdash; people who do woodwork, knitting, music production. They share curiosity, resilience, comfort with failure, and creativity. Look for "chaos pilots" who thrive in ambiguity. Don't hire solely based on law school rankings; hire for organisational skills, attention to detail, and genuine interest in how things work.
+          </div>
+        </div>
+        <div class="point-card border-7" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Diverse teams perform better</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Diversity of thought means a wider idea space during brainstorming and greater reach of solutions during problem-solving. Research confirms diverse teams are smarter and more likely to process facts carefully. Guard against affinity bias in hiring.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-people">Team Building</div>
+      <div class="tag tag-culture">Culture</div>
+    </section>
+
+    <!-- CH 8 -->
+    <section id="sec-ch8" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 8</div>
+        <div class="chapter-title">Supercharging Your Strategy</div>
+        <div class="chapter-subtitle">TNTs, bright spots, and appreciative inquiry &mdash; optimistic approaches to change.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-8" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Tiny Noticeable Things (TNTs)</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Small gestures that slip past the brain's resistance to change and create lasting positive impact. A legal technologist demonstrating Word macros that eliminate formatting frustrations had more impact than any major platform demo. <strong>Don't underestimate the power of tiny things to improve lives.</strong>
+          </div>
+        </div>
+        <div class="point-card border-8" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Find the Bright Spots</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Instead of always looking for problems, find where things are already working well and replicate those successes. Example: an associate who invented a numbering system for discovery responses &mdash; amplifying that to the whole practice group improved efficiency without buying any new technology.
+          </div>
+        </div>
+        <div class="point-card border-8" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Appreciative Inquiry (4-D Cycle)</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            A strengths-based approach to change: <strong>Discovery</strong> (identify what's working well) &rarr; <strong>Dream</strong> (envision the future if best practices were amplified) &rarr; <strong>Design</strong> (construct the path) &rarr; <strong>Destiny</strong> (sustain the change). Particularly useful for rejuvenating jaded team members.
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        <em>Mental health note:</em> Law is particularly vulnerable to mental health issues. Innovative approaches to reducing repetitive work can have a real impact on lawyer wellbeing. Make sure your team gets the support they need.
+      </div>
+      <div class="tag tag-culture">Culture</div>
+      <div class="tag tag-people">Wellbeing</div>
+    </section>
+
+    <!-- CH 9 -->
+    <section id="sec-ch9" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 9</div>
+        <div class="chapter-title">Change Management</div>
+        <div class="chapter-subtitle">The change curve, Kotter's 8 steps, and managing resistance.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-9" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Four principles of change</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <ol style="padding-left:20px">
+              <li>Change is registered in the same brain region as <strong>pain</strong></li>
+              <li>The brain forms <strong>expectations</strong> of new tools &mdash; unmet expectations create stress</li>
+              <li>Managing expectations at the outset is critical</li>
+              <li>Change is a <strong>process</strong> with distinct stages (denial &rarr; resistance &rarr; exploration &rarr; acceptance)</li>
+            </ol>
+          </div>
+        </div>
+        <div class="point-card border-9" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Kotter's 8 Steps</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <ol style="padding-left:20px">
+              <li>Increase urgency</li>
+              <li>Build a guiding team</li>
+              <li>Develop a vision</li>
+              <li>Communicate to get buy-in</li>
+              <li>Empower action</li>
+              <li>Create short-term wins</li>
+              <li>Don't give up</li>
+              <li>Make the change stick</li>
+            </ol>
+            Create a change management roadmap template that your team reviews for each project.
+          </div>
+        </div>
+        <div class="point-card border-9" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Dimensions of change &mdash; assess your project's complexity</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Evaluate each project on four dimensions: <strong>Breadth</strong> (how many people affected), <strong>Depth</strong> (how profound the change), <strong>Impact</strong> (how many systems affected), <strong>Criticality</strong> (how vital to the organisation). A project scoring high on multiple dimensions needs a full change team and significant investment.
+          </div>
+        </div>
+        <div class="point-card border-9" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Change agents vs. saboteurs</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <strong>Change agents:</strong> Positive, well-liked, comfortable with change, energetic. Identify them early and recruit them to champion projects.<br><br>
+            <strong>Saboteurs:</strong> Negative, entrenched, find reasons things can't work. Don't fight them head-on &mdash; let them save face, praise improvements, play to ego. If their reputation benefits from getting on board, they'll likely stop resisting.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-method">Change Management</div>
+      <div class="tag tag-people">People</div>
+    </section>
+
+    <!-- CH 10 -->
+    <section id="sec-ch10" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 10</div>
+        <div class="chapter-title">Communications &amp; Storytelling</div>
+        <div class="chapter-subtitle">The power of narrative, WIIFM, personas, and the Rule of Seven.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-10" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">WIIFM &mdash; "What's In It For Me?"</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Every communication must answer this from the recipient's perspective. People want to know what they'll lose, how much time it will take to learn, and what the expectations are. Tailor messaging to different persona groups &mdash; a partner's priorities differ from an associate's.
+          </div>
+        </div>
+        <div class="point-card border-10" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">The Rule of Seven</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            People need to see or hear a message at least <strong>seven times</strong> before acting. Use multiple channels: email, intranet, Slack, posters in kitchenettes, TV displays, launch videos, firm podcasts, elevator chats, branded swag. Consistency across channels is key.
+          </div>
+        </div>
+        <div class="point-card border-10" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">See-Feel-Change (not Analyze-Think-Change)</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            We underestimate the power of emotion. Instead of "improve efficiency by using this tool," try "make your client happier" or "spend an extra half hour with your family." Use <strong>ethos</strong> (credibility), <strong>pathos</strong> (emotion), and <strong>logos</strong> (logic) together.
+          </div>
+        </div>
+        <div class="point-card border-10" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Elevator pitches and active listening</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Develop short, compelling elevator pitches for each solution. Train your team in <strong>active listening</strong> &mdash; maintain eye contact, don't interrupt, ask clarifying questions, summarise what you've heard. This builds trust and uncovers real needs.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-method">Communications</div>
+      <div class="tag tag-people">Storytelling</div>
+    </section>
+
+    <!-- CH 11 -->
+    <section id="sec-ch11" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 11</div>
+        <div class="chapter-title">Creative Problem-Solving &amp; Process Improvement</div>
+        <div class="chapter-subtitle">Design thinking, Lean Six Sigma, Kaizen, and root cause analysis.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-11" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Design Thinking (IDEO)</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Five stages: <strong>Empathize</strong> &rarr; <strong>Define</strong> &rarr; <strong>Ideate</strong> &rarr; <strong>Prototype</strong> &rarr; <strong>Test</strong>. 79% of companies using it agree it improves ideation. The key insight: <em>don't solve a problem before you properly understand it.</em> Start with business departments, get wins, then move to lawyers, then to clients.
+          </div>
+        </div>
+        <div class="point-card border-11" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Lean Six Sigma &amp; DMAIC</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <strong>Define</strong> &rarr; <strong>Measure</strong> &rarr; <strong>Analyze</strong> &rarr; <strong>Improve</strong> &rarr; <strong>Control</strong>. Focuses on eliminating waste in processes. Most widely applied in legal project management. Seyfarth Shaw became renowned for adopting Lean Six Sigma in 2005. Consider having team members certified.
+          </div>
+        </div>
+        <div class="point-card border-11" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Kaizen &mdash; continuous improvement culture</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Small, ongoing positive changes reap significant improvements. Everyone at all levels works together proactively. When people feel their opinions matter, they're more engaged and more likely to stay &mdash; critical for law firm retention.
+          </div>
+        </div>
+        <div class="point-card border-11" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Root cause tools: 5 Whys &amp; Fishbone</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <strong>5 Whys:</strong> Ask "why" five times to get past symptoms to root causes. Example: Partner says she needs better work tracking &rarr; 5 whys reveals the real issue is concern about associate wellbeing and retention.<br><br>
+            <strong>Fishbone (Ishikawa):</strong> Map causes across categories (People, Methods, Equipment, Environment) to understand multi-faceted problems.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-method">Methodology</div>
+      <div class="tag tag-tech">Process</div>
+    </section>
+
+    <!-- CH 12 -->
+    <section id="sec-ch12" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 12</div>
+        <div class="chapter-title">Approaches to Work &amp; Ways of Working</div>
+        <div class="chapter-subtitle">Porter's Five Forces, Blue Ocean Strategy, The Innovator's Dilemma, and Agile.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-12" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Porter's Five Forces for legal</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Apply competitive analysis to legal: <strong>Buyer power</strong> (clients demanding innovation), <strong>Supplier power</strong> (lawyers themselves), <strong>New entrants</strong> (ALSPs, Big Four), <strong>Substitutes</strong> (technology replacing parts of legal work), <strong>Rivalry</strong> (competition for shrinking market share). Use this to refine your innovation strategy.
+          </div>
+        </div>
+        <div class="point-card border-12" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Blue Ocean Strategy</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Instead of competing in crowded "red oceans," create uncontested market space. Innovation teams are well-positioned to identify blue ocean opportunities &mdash; new service lines, products, or approaches that make competition irrelevant. Technology is sometimes involved but isn't a defining feature.
+          </div>
+        </div>
+        <div class="point-card border-12" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">The Innovator's Dilemma (Christensen)</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Essential reading for legal innovators. Key takeaways:
+            <ul>
+              <li>The status quo is not equipped to nurture disruptive innovation</li>
+              <li>Resources won't naturally be allocated to disruptive efforts</li>
+              <li>The market for your disruption isn't your current client base</li>
+              <li>You need a safe space where failure is allowed</li>
+              <li>Capabilities needed for disruption differ from those for core work</li>
+            </ul>
+          </div>
+        </div>
+        <div class="point-card border-12" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Agile and Scrum for legal innovation</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Agile is a philosophy, not a rigid structure: individuals over processes, working solutions over documentation, collaboration over contracts, responding to change over following a plan. Use sprints and standups for your innovation projects. Organise into smaller cross-functional teams for better focus and engagement.
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-strategy">Business Strategy</div>
+      <div class="tag tag-method">Agile</div>
+    </section>
+
+    <!-- CH 13 -->
+    <section id="sec-ch13" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 13</div>
+        <div class="chapter-title">Product Management</div>
+        <div class="chapter-subtitle">V2MOM, Business Model Canvas, JTBD, and Build/Partner/Buy.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-13" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Why products matter in law</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Products have innate advantages over services: an expert doesn't need to be available for a client to access expertise. Parts of legal work lend themselves to repackaging at a flat rate. Value lies in the <strong>output</strong>, not the hours required to deliver it. Firms that recognise this can differentiate and scale.
+          </div>
+        </div>
+        <div class="point-card border-13" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">V2MOM Framework (Salesforce)</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <strong>Vision:</strong> What do you want to accomplish?<br>
+            <strong>Values:</strong> What's important about it?<br>
+            <strong>Methods:</strong> How will you realise the vision?<br>
+            <strong>Obstacles:</strong> What might stand in the way?<br>
+            <strong>Measures:</strong> How will you know when you've achieved it?
+          </div>
+        </div>
+        <div class="point-card border-13" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Jobs To Be Done (JTBD)</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            The unit of analysis isn't the customer or the product &mdash; it's the <strong>core functional job</strong> the customer is trying to get done. Formula: <em>"WHEN I [situation], I WANT TO [motivation], SO I CAN [desired outcome]."</em> Thinking about lawyers' and clients' problems from this perspective helps you make more impact.
+          </div>
+        </div>
+        <div class="point-card border-13" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Build, Partner, or Buy</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Decision framework for any technology need:
+            <ol style="padding-left:20px">
+              <li><strong>Use existing:</strong> Can you combine/reconfigure tools you already have?</li>
+              <li><strong>Buy:</strong> Is there a third-party solution to license?</li>
+              <li><strong>Partner:</strong> Can a vendor develop something with you?</li>
+              <li><strong>Build:</strong> If nothing else works and the value justifies it, build custom.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="tag tag-tech">Product</div>
+      <div class="tag tag-strategy">Strategy</div>
+    </section>
+
+    <!-- CH 14 -->
+    <section id="sec-ch14" class="chapter-section" style="display:none">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 14</div>
+        <div class="chapter-title">Incentives &amp; Adoption</div>
+        <div class="chapter-subtitle">The psychology of adoption, status quo bias, and the adoption lifecycle.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-14" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">The 9x Effect &mdash; why adoption fails</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Consumers overweight the incumbent product's benefits by a factor of roughly <strong>3x</strong>, while developers overweight the new product's benefits by <strong>3x</strong>. Combined, the new product must be <strong>~9x better</strong> than the old to overcome status quo bias. This explains why many innovations fail despite being objectively superior.
+          </div>
+        </div>
+        <div class="point-card border-14" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Four types of adoption scenarios</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <ul>
+              <li><strong>Easy sells:</strong> Limited product + behaviour change &mdash; quick adoption</li>
+              <li><strong>Smash hits:</strong> Major product improvement, minimal behaviour change &mdash; highest success</li>
+              <li><strong>Long hauls:</strong> Major changes to both product and behaviour (e.g., DMS) &mdash; needs years of work</li>
+              <li><strong>Rapid failures:</strong> Major behaviour change, limited product benefit &mdash; avoid these</li>
+            </ul>
+          </div>
+        </div>
+        <div class="point-card border-14" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">The Adoption Lifecycle (Rogers)</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            <strong>Innovators</strong> (2.5%) &rarr; <strong>Early Adopters</strong> (13.5%) &rarr; <strong>Early Majority</strong> (34%) &rarr; <strong>Late Majority</strong> (34%) &rarr; <strong>Laggards</strong> (16%). Early adopters are key influencers with extensive networks &mdash; their word-of-mouth support is critical. Once a critical mass develops, momentum becomes self-sustaining.
+          </div>
+        </div>
+        <div class="point-card border-14" onclick="toggleCard(this)">
+          <div class="point-header">
+            <div class="point-title">Minimise behaviour change &amp; add autonomy</div>
+            <div class="point-toggle">+</div>
+          </div>
+          <div class="point-detail">
+            Integrate new solutions into existing workflows rather than asking people to change how they work entirely. Provide signposts showing exactly where in their usual process to access the new solution. Add a degree of autonomy &mdash; people adopt faster when they feel they're choosing, not being forced.
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        <em>KWM case study:</em> King &amp; Wood Mallesons treats innovation as mission-critical. They link innovation to client engagements so lawyers can roll innovation work into client work, reducing the need for extra time. Certifications and formal recognition for innovation success are embedded in the firm's culture.
+      </div>
+      <div class="tag tag-culture">Adoption</div>
+      <div class="tag tag-people">Psychology</div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+const chapters = ['overview','ch1','ch2','ch3','ch4','ch5','ch6','ch7','ch8','ch9','ch10','ch11','ch12','ch13','ch14'];
+let currentChapter = 'overview';
+
+function showChapter(id) {
+  currentChapter = id;
+  // Hide all
+  document.querySelectorAll('.chapter-section').forEach(s => s.style.display = 'none');
+  document.getElementById('sec-' + id).style.display = 'block';
+
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[data-chapter="${id}"]`);
+  if (navItem) navItem.classList.add('active');
+
+  // Update progress
+  const idx = chapters.indexOf(id);
+  const pct = Math.round((idx / (chapters.length - 1)) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  // Scroll main to top
+  document.querySelector('.main').scrollTop = 0;
+
+  // Close mobile sidebar
+  document.querySelector('.sidebar').classList.remove('open');
+}
+
+function toggleCard(el) {
+  el.classList.toggle('expanded');
+}
+
+function filterNav() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.nav-item').forEach(item => {
+    const text = item.textContent.toLowerCase();
+    item.classList.toggle('hidden', q && !text.includes(q));
+  });
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  const idx = chapters.indexOf(currentChapter);
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (idx < chapters.length - 1) showChapter(chapters[idx + 1]);
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (idx > 0) showChapter(chapters[idx - 1]);
+  }
+});
+</script>
+
+</body>
+</html>
