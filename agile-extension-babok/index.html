@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agile Extension to the BABOK Guide — Interactive Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #1a1a2e;
+    --surface: #222240;
+    --surface2: #2a2a4a;
+    --accent1: #30b8c5;   /* teal   */
+    --accent2: #6c63ff;   /* violet */
+    --accent3: #ff6b9d;   /* pink   */
+    --accent4: #ffd93d;   /* yellow */
+    --accent5: #6bcb77;   /* green  */
+    --accent6: #ff8a5c;   /* orange */
+    --accent7: #a29bfe;   /* lilac  */
+    --strategy: #ffd93d;
+    --initiative: #30b8c5;
+    --delivery: #6bcb77;
+    --text: #e8e8f0;
+    --text-dim: #9999b8;
+    --text-bright: #ffffff;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Lexend', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 17px;
+    letter-spacing: 0.02em;
+    min-height: 100vh;
+  }
+
+  /* ---- LAYOUT ---- */
+  .app { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+
+  /* ---- SIDEBAR ---- */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 20px 0 40px;
+    overflow-y: auto;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .book-header {
+    text-align: center; padding: 12px 24px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 8px;
+  }
+  .book-header h1 { font-size: 15px; font-weight: 600; color: var(--text-bright); line-height: 1.4; }
+  .book-header p { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+  .search-box { padding: 12px 20px 4px; }
+  .search-box input {
+    width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; color: var(--text); font-family: inherit; font-size: 14px;
+    padding: 9px 14px; outline: none; transition: border-color .2s;
+  }
+  .search-box input:focus { border-color: var(--accent1); }
+  .part-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent4); padding: 20px 24px 8px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px 24px; cursor: pointer;
+    transition: all 0.2s; border-left: 3px solid transparent; font-size: 14px; color: var(--text-dim);
+  }
+  .nav-item:hover { background: rgba(48,184,197,0.08); color: var(--text); }
+  .nav-item.active {
+    background: rgba(48,184,197,0.12); border-left-color: var(--accent1);
+    color: var(--text-bright); font-weight: 500;
+  }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ---- MAIN ---- */
+  .main { padding: 40px 56px 80px; max-width: 980px; overflow-y: auto; }
+  .chapter-header { margin-bottom: 36px; }
+  .chapter-num {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--accent1); margin-bottom: 8px;
+  }
+  .chapter-title { font-size: 32px; font-weight: 700; color: var(--text-bright); line-height: 1.3; margin-bottom: 12px; }
+  .chapter-subtitle { font-size: 16px; color: var(--text-dim); font-weight: 300; line-height: 1.6; }
+
+  h3.sub {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-dim); margin: 40px 0 16px;
+  }
+
+  /* ---- KEY POINT CARDS ---- */
+  .points-grid { display: flex; flex-direction: column; gap: 16px; }
+  .point-card {
+    background: var(--surface); border-radius: var(--radius); padding: 22px 28px;
+    border-left: 4px solid var(--accent1); transition: all 0.25s; cursor: pointer; position: relative;
+  }
+  .point-card:hover { background: var(--surface2); transform: translateX(4px); }
+  .point-card.expanded { background: var(--surface2); }
+  .point-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .point-title { font-size: 17px; font-weight: 600; color: var(--text-bright); line-height: 1.5; }
+  .point-toggle {
+    font-size: 20px; color: var(--accent1); flex-shrink: 0; transition: transform 0.3s;
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: rgba(48,184,197,0.1);
+  }
+  .point-card.expanded .point-toggle { transform: rotate(45deg); }
+  .point-detail {
+    display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);
+    color: var(--text); font-weight: 300; line-height: 1.9; font-size: 16px;
+  }
+  .point-card.expanded .point-detail { display: block; }
+  .point-detail strong { color: var(--accent1); font-weight: 500; }
+  .point-detail ul { padding-left: 20px; margin: 8px 0; }
+  .point-detail li { margin-bottom: 6px; }
+  .point-detail p + p { margin-top: 10px; }
+
+  .border-1 { border-left-color: #6c63ff; }
+  .border-2 { border-left-color: #ff6b9d; }
+  .border-3 { border-left-color: #30b8c5; }
+  .border-4 { border-left-color: #ffd93d; }
+  .border-5 { border-left-color: #6bcb77; }
+  .border-6 { border-left-color: #ff8a5c; }
+  .border-7 { border-left-color: #a29bfe; }
+
+  /* ---- TAGS ---- */
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    padding: 3px 10px; border-radius: 20px; margin-right: 6px; margin-top: 10px;
+  }
+  .tag-strategy  { background: rgba(255,217,61,0.18);  color: var(--strategy); }
+  .tag-initiative{ background: rgba(48,184,197,0.18);  color: var(--initiative); }
+  .tag-delivery  { background: rgba(107,203,119,0.18); color: var(--delivery); }
+  .tag-ctx       { background: rgba(108,99,255,0.2);   color: #a29bfe; }
+  .tag-babok     { background: rgba(255,138,92,0.2);   color: #ff8a5c; }
+
+  /* ---- PROGRESS BAR ---- */
+  .progress-bar { position: fixed; top: 0; left: 320px; right: 0; height: 3px; background: rgba(255,255,255,0.05); z-index: 100; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent1), var(--accent2)); transition: width 0.3s; }
+
+  /* ---- OVERVIEW GRID ---- */
+  .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+  .overview-card {
+    background: var(--surface); border-radius: var(--radius); padding: 22px 24px; cursor: pointer;
+    transition: all 0.25s; border: 1px solid rgba(255,255,255,0.04);
+  }
+  .overview-card:hover { background: var(--surface2); transform: translateY(-2px); box-shadow: var(--shadow); }
+  .oc-icon { font-size: 28px; margin-bottom: 10px; }
+  .oc-title { font-size: 16px; font-weight: 600; color: var(--text-bright); margin-bottom: 4px; }
+  .oc-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+  .callout {
+    background: linear-gradient(135deg, rgba(48,184,197,0.12), rgba(108,99,255,0.12));
+    border: 1px solid rgba(48,184,197,0.25); border-radius: var(--radius);
+    padding: 22px 28px; margin: 28px 0; font-size: 16px; line-height: 1.8;
+  }
+  .callout em { color: var(--accent1); font-style: normal; font-weight: 600; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0 0 32px; }
+  .stat {
+    background: var(--surface); border-radius: 14px; padding: 16px 18px; text-align: center;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .stat .n { font-size: 30px; font-weight: 700; color: var(--text-bright); line-height: 1.1; }
+  .stat .l { font-size: 12px; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 6px; }
+
+  /* ---- HORIZON EXPLORER ---- */
+  .horizon-stack { display: flex; flex-direction: column; gap: 10px; margin: 20px 0 28px; }
+  .horizon-band {
+    border-radius: 14px; padding: 18px 24px; cursor: pointer; display: grid;
+    grid-template-columns: 1fr auto; align-items: center; gap: 16px;
+    border: 1px solid rgba(255,255,255,0.06); transition: all .25s; background: var(--surface);
+  }
+  .horizon-band:hover { transform: translateX(4px); background: var(--surface2); }
+  .horizon-band.active { border-color: var(--hc); box-shadow: 0 0 0 1px var(--hc) inset; background: var(--surface2); }
+  .hb-name { font-size: 18px; font-weight: 700; color: var(--hc); }
+  .hb-purpose { font-size: 14px; color: var(--text-dim); }
+  .hb-time { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--hc); font-weight: 600; text-align: right; white-space: nowrap; }
+  .hb-s { --hc: var(--strategy); }
+  .hb-i { --hc: var(--initiative); }
+  .hb-d { --hc: var(--delivery); }
+  .horizon-detail {
+    background: var(--surface); border-radius: var(--radius); padding: 24px 28px; margin-bottom: 20px;
+    border-left: 4px solid var(--hc); display: none; font-size: 15.5px; font-weight: 300; line-height: 1.85;
+  }
+  .horizon-detail.show { display: block; animation: fade .3s; }
+  .horizon-detail h4 { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--hc); margin: 18px 0 8px; font-weight: 600; }
+  .horizon-detail h4:first-child { margin-top: 0; }
+  .horizon-detail ul { padding-left: 20px; }
+  .horizon-detail li { margin-bottom: 5px; }
+  .feedback-arrows { font-size: 13px; color: var(--text-dim); text-align: center; margin: -4px 0 16px; letter-spacing: .04em; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none;} }
+
+  /* ---- MATRIX ---- */
+  .matrix { width: 100%; border-collapse: separate; border-spacing: 6px; margin: 16px 0 8px; table-layout: fixed; }
+  .matrix th { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; padding: 6px 4px; }
+  .matrix th.rowh { text-align: left; color: var(--text); font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 500; width: 34%; }
+  .matrix td {
+    background: var(--surface); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45;
+    cursor: pointer; transition: all .2s; color: var(--text-dim); vertical-align: top; border: 1px solid transparent;
+  }
+  .matrix td:hover { background: var(--surface2); color: var(--text); }
+  .matrix td.sel { border-color: var(--hc); color: var(--text-bright); background: var(--surface2); }
+  .matrix td.s { --hc: var(--strategy); } .matrix td.i { --hc: var(--initiative); } .matrix td.d { --hc: var(--delivery); }
+  .matrix-detail {
+    background: var(--surface2); border-radius: var(--radius); padding: 20px 26px; margin-top: 10px;
+    font-size: 15.5px; font-weight: 300; line-height: 1.85; border-left: 4px solid var(--hc, var(--accent1)); min-height: 72px;
+  }
+  .matrix-detail b { color: var(--text-bright); font-weight: 600; display: block; margin-bottom: 4px; }
+  .matrix-detail .hint { color: var(--text-dim); font-size: 14px; }
+
+  /* ---- PLANNING COMPARISON ---- */
+  .seg { display: inline-flex; background: var(--surface); border-radius: 12px; padding: 4px; gap: 4px; margin: 10px 0 18px; flex-wrap: wrap; }
+  .seg button {
+    background: transparent; border: none; color: var(--text-dim); font-family: inherit; font-size: 14px; font-weight: 500;
+    padding: 8px 18px; border-radius: 9px; cursor: pointer; transition: all .2s;
+  }
+  .seg button:hover { color: var(--text); }
+  .seg button.on { background: var(--accent2); color: #fff; }
+  .plan-panel { display: none; }
+  .plan-panel.show { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; animation: fade .3s; }
+  .plan-cell { background: var(--surface); border-radius: 14px; padding: 18px 22px; font-size: 15px; font-weight: 300; line-height: 1.75; }
+  .plan-cell h5 { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent2); margin-bottom: 8px; font-weight: 600; }
+  .plan-cell.wide { grid-column: 1 / -1; }
+  .plan-cell.good h5 { color: var(--accent5); } .plan-cell.bad h5 { color: var(--accent3); }
+
+  /* ---- PRINCIPLE / BACCM CARDS ---- */
+  .pill-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0 24px; }
+  .pill {
+    background: var(--surface); border-radius: 14px; padding: 16px 18px; cursor: pointer; transition: all .2s;
+    border-top: 3px solid var(--pc, var(--accent1));
+  }
+  .pill:hover { background: var(--surface2); transform: translateY(-2px); }
+  .pill.on { background: var(--surface2); box-shadow: 0 0 0 1px var(--pc) inset; }
+  .pill .pt { font-size: 15px; font-weight: 600; color: var(--text-bright); line-height: 1.4; }
+  .pill .pd { font-size: 12.5px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+  .pill-detail {
+    background: var(--surface2); border-radius: var(--radius); padding: 20px 26px; font-size: 15.5px; font-weight: 300;
+    line-height: 1.85; border-left: 4px solid var(--pc, var(--accent1)); display: none; margin-bottom: 20px;
+  }
+  .pill-detail.show { display: block; animation: fade .3s; }
+  .pill-detail b { color: var(--text-bright); font-weight: 600; }
+
+  /* ---- TECHNIQUES ---- */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 20px; align-items: center; }
+  .filters .flabel { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); margin-right: 4px; }
+  .chip {
+    background: var(--surface); border: 1px solid rgba(255,255,255,0.08); color: var(--text-dim); font-family: inherit;
+    font-size: 13px; padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: all .2s;
+  }
+  .chip:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+  .chip.on { background: rgba(108,99,255,0.25); color: #fff; border-color: var(--accent2); }
+  .chip.on.hs { background: rgba(255,217,61,0.2); border-color: var(--strategy); color: var(--strategy); }
+  .chip.on.hi { background: rgba(48,184,197,0.2); border-color: var(--initiative); color: var(--initiative); }
+  .chip.on.hd { background: rgba(107,203,119,0.2); border-color: var(--delivery); color: var(--delivery); }
+  .tech-search { width: 100%; max-width: 420px; }
+  .tech-search input {
+    width: 100%; background: var(--surface); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+    color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 16px; outline: none;
+  }
+  .tech-search input:focus { border-color: var(--accent2); }
+  .tech-count { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+  .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .tech-card {
+    background: var(--surface); border-radius: var(--radius); padding: 20px 22px; cursor: pointer; transition: all .25s;
+    border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 6px;
+  }
+  .tech-card:hover { background: var(--surface2); transform: translateY(-2px); box-shadow: var(--shadow); }
+  .tech-card.open { grid-column: 1 / -1; background: var(--surface2); cursor: default; }
+  .tc-num { font-size: 11px; letter-spacing: .12em; color: var(--text-dim); font-weight: 600; }
+  .tc-title { font-size: 17px; font-weight: 600; color: var(--text-bright); line-height: 1.4; }
+  .tc-purpose { font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+  .tc-tags { margin-top: 2px; }
+  .tc-tags .tag { margin-top: 6px; }
+  .tc-body { display: none; margin-top: 12px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 15px; font-weight: 300; line-height: 1.8; }
+  .tech-card.open .tc-body { display: block; animation: fade .3s; }
+  .tc-body h5 { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent1); margin: 14px 0 6px; font-weight: 600; }
+  .tc-body h5:first-child { margin-top: 0; }
+  .tc-body ul { padding-left: 20px; }
+  .tc-body li { margin-bottom: 4px; }
+  .tc-body .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .tc-body .two h5.good { color: var(--accent5); } .tc-body .two h5.bad { color: var(--accent3); }
+  .tc-body code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; background: rgba(0,0,0,0.3);
+    padding: 2px 7px; border-radius: 6px; color: var(--accent4);
+  }
+  .tc-close { float: right; font-size: 13px; color: var(--accent3); cursor: pointer; font-weight: 500; }
+
+  /* ---- KANO GRID ---- */
+  .kano { display: grid; grid-template-columns: 110px repeat(5, 1fr); gap: 5px; margin: 14px 0 8px; font-size: 12.5px; }
+  .kano div { background: var(--surface); border-radius: 8px; padding: 9px 6px; text-align: center; }
+  .kano .h { color: var(--text-dim); font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; background: transparent; }
+  .kano .E { background: rgba(255,107,157,0.22); color: #ff9ebf; font-weight: 600; }
+  .kano .P { background: rgba(48,184,197,0.22); color: #6fd3dd; font-weight: 600; }
+  .kano .T { background: rgba(255,217,61,0.2); color: #ffe27a; font-weight: 600; }
+  .kano .I { color: var(--text-dim); }
+  .kano .Q { background: rgba(255,255,255,0.03); color: #777; }
+  .kano-key { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+  .kano-key span { font-weight: 600; }
+
+  /* ---- MAP TABLE ---- */
+  .maptable { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+  .maptable td { background: var(--surface); padding: 14px 16px; font-size: 14px; vertical-align: top; line-height: 1.6; font-weight: 300; }
+  .maptable td:first-child { border-radius: 12px 0 0 12px; font-weight: 600; color: var(--text-bright); width: 26%; font-size: 14.5px; }
+  .maptable td:last-child { border-radius: 0 12px 12px 0; }
+  .maptable .kh { color: var(--strategy); font-weight: 600; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; display: block; }
+  .maptable .ki { color: var(--initiative); font-weight: 600; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; display: block; margin-top: 8px; }
+  .maptable .kd { color: var(--delivery); font-weight: 600; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; display: block; margin-top: 8px; }
+
+  .footer-note { margin-top: 48px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 12.5px; color: var(--text-dim); line-height: 1.7; }
+
+  .chapter-section { animation: fade .35s; }
+  .hidden { display: none !important; }
+
+  /* ---- MOBILE ---- */
+  .menu-toggle {
+    display: none; position: fixed; top: 12px; left: 12px; z-index: 300; background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.1); color: var(--text-bright); font-size: 22px; width: 44px; height: 44px;
+    border-radius: 12px; cursor: pointer; align-items: center; justify-content: center;
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; left: 0; top: 0; width: 300px; z-index: 200; transform: translateX(-100%); transition: transform .3s; }
+    .sidebar.open { transform: none; box-shadow: var(--shadow); }
+    .main { padding: 72px 16px 60px; }
+    .progress-bar { left: 0; }
+    .menu-toggle { display: flex; }
+    .overview-grid, .tech-grid, .plan-panel.show, .tc-body .two { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .pill-grid { grid-template-columns: 1fr 1fr; }
+    .chapter-title { font-size: 26px; }
+    .matrix th.rowh { width: 40%; }
+    .matrix td { padding: 8px; font-size: 11.5px; }
+    .kano { grid-template-columns: 80px repeat(5, 1fr); font-size: 11px; }
+    .hb-time { display: none; }
+    .maptable td:first-child { width: 36%; }
+  }
+</style>
+</head>
+<body>
+<button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">&#9776;</button>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="book-header">
+      <h1>Agile Extension to the<br>BABOK&reg; Guide</h1>
+      <p>Version 2 &middot; IIBA &amp; Agile Alliance</p>
+    </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search chapters..." oninput="filterNav()">
+    </div>
+    <div class="nav-item active" data-chapter="overview" onclick="showChapter('overview')">
+      <span class="nav-dot" style="background:var(--accent1)"></span> Overview
+    </div>
+    <div class="part-label">Foundations</div>
+    <div class="nav-item" data-chapter="ch1" onclick="showChapter('ch1')"><span class="nav-dot" style="background:#6c63ff"></span> 1. Introduction</div>
+    <div class="nav-item" data-chapter="ch2" onclick="showChapter('ch2')"><span class="nav-dot" style="background:#ff6b9d"></span> 2. The Agile Mindset</div>
+    <div class="nav-item" data-chapter="ch3" onclick="showChapter('ch3')"><span class="nav-dot" style="background:#a29bfe"></span> 3. Analysis at Multiple Horizons</div>
+    <div class="part-label">The Three Horizons</div>
+    <div class="nav-item" data-chapter="ch4" onclick="showChapter('ch4')"><span class="nav-dot" style="background:#ffd93d"></span> 4. Strategy Horizon</div>
+    <div class="nav-item" data-chapter="ch5" onclick="showChapter('ch5')"><span class="nav-dot" style="background:#30b8c5"></span> 5. Initiative Horizon</div>
+    <div class="nav-item" data-chapter="ch6" onclick="showChapter('ch6')"><span class="nav-dot" style="background:#6bcb77"></span> 6. Delivery Horizon</div>
+    <div class="part-label">Toolkit</div>
+    <div class="nav-item" data-chapter="ch7" onclick="showChapter('ch7')"><span class="nav-dot" style="background:#ff8a5c"></span> 7. Techniques Library</div>
+    <div class="nav-item" data-chapter="appb" onclick="showChapter('appb')"><span class="nav-dot" style="background:#a29bfe"></span> B. BABOK Tasks &times; Horizons</div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main" id="mainContent">
+
+    <!-- ===================== OVERVIEW ===================== -->
+    <section id="sec-overview" class="chapter-section">
+      <div class="chapter-header">
+        <div class="chapter-num">Dashboard</div>
+        <div class="chapter-title">Agile Extension to the BABOK&reg; Guide</div>
+        <div class="chapter-subtitle">Version 2 (2017), by IIBA and the Agile Alliance &mdash; how business analysis works when it's done with an agile mindset. Three rolling planning horizons, seven principles, and 24 techniques. Click any card to explore.</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="n">3</div><div class="l">Horizons</div></div>
+        <div class="stat"><div class="n">7</div><div class="l">Principles</div></div>
+        <div class="stat"><div class="n">24</div><div class="l">Techniques</div></div>
+        <div class="stat"><div class="n">6</div><div class="l">BACCM concepts</div></div>
+      </div>
+
+      <div class="overview-grid">
+        <div class="overview-card" onclick="showChapter('ch2')">
+          <div class="oc-icon">&#129504;</div>
+          <div class="oc-title">Agile is a mindset, not a method</div>
+          <div class="oc-desc">Values &rarr; principles &rarr; your own methodology. "Do less, and do the right things, right."</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch3')">
+          <div class="oc-icon">&#127757;</div>
+          <div class="oc-title">Three planning horizons</div>
+          <div class="oc-desc">Strategy, Initiative, Delivery &mdash; rolling, nested, and fed by constant feedback</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch2'); setTimeout(()=>document.getElementById('principles').scrollIntoView({behavior:'smooth'}),100)">
+          <div class="oc-icon">&#129517;</div>
+          <div class="oc-title">Seven principles of agile BA</div>
+          <div class="oc-desc">See the Whole, Think as a Customer, Avoid Waste&hellip; and how each maps to BACCM</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch3'); setTimeout(()=>document.getElementById('planning').scrollIntoView({behavior:'smooth'}),100)">
+          <div class="oc-icon">&#128197;</div>
+          <div class="oc-title">Predictive vs Iterative vs Adaptive</div>
+          <div class="oc-desc">Three planning approaches, their economics, and why adaptive is central</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch4')">
+          <div class="oc-icon">&#127919;</div>
+          <div class="oc-title">Should we start this initiative?</div>
+          <div class="oc-desc">The five questions the Strategy Horizon must answer before funding work</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch5')">
+          <div class="oc-icon">&#9878;</div>
+          <div class="oc-title">Continue, change, or cancel</div>
+          <div class="oc-desc">Initiative Horizon: maximise outcome, minimise output, know when enough is enough</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch6')">
+          <div class="oc-icon">&#128230;</div>
+          <div class="oc-title">Backlogs, stories &amp; INVEST</div>
+          <div class="oc-desc">Delivery Horizon: just-in-time refinement, ready stories, fast feedback</div>
+        </div>
+        <div class="overview-card" onclick="showChapter('ch7')">
+          <div class="oc-icon">&#129520;</div>
+          <div class="oc-title">24-technique library</div>
+          <div class="oc-desc">Filter by horizon or context &mdash; BDD, Kano, MVP, Real Options, Story Mapping&hellip;</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <em>Core thesis:</em> Agile business analysis is ordinary business analysis done with an agile mindset &mdash; a constant focus on <em>business value</em>, <em>fast feedback</em>, and <em>learning</em>. The goal is to maximise outcome (value delivered) with minimum output, and to decide what to do next using evidence rather than opinion, at every level from strategy to the daily backlog.
+      </div>
+
+      <h3 class="sub">The three horizons at a glance</h3>
+      <div class="horizon-stack" id="hzOverview">
+        <div class="horizon-band hb-s" onclick="showChapter('ch4')">
+          <div><div class="hb-name">Strategy Horizon</div><div class="hb-purpose">Inform decisions about the organisation's business goals &mdash; which initiatives to fund, resource, monitor, or stop.</div></div>
+          <div class="hb-time">3 months &rarr; multiple years</div>
+        </div>
+        <div class="feedback-arrows">&#8593; learning flows up &nbsp;&nbsp;&middot;&nbsp;&nbsp; context &amp; priority flow down &#8595;</div>
+        <div class="horizon-band hb-i" onclick="showChapter('ch5')">
+          <div><div class="hb-name">Initiative Horizon</div><div class="hb-purpose">Inform decisions about solution options, features, priorities, and lifespan of one product or initiative.</div></div>
+          <div class="hb-time">Next 1 &ndash; 3 months</div>
+        </div>
+        <div class="feedback-arrows">&#8593; learning flows up &nbsp;&nbsp;&middot;&nbsp;&nbsp; context &amp; priority flow down &#8595;</div>
+        <div class="horizon-band hb-d" onclick="showChapter('ch6')">
+          <div><div class="hb-name">Delivery Horizon</div><div class="hb-purpose">Inform decisions about delivering the solution &mdash; slicing, refining, and shipping increments from a prioritised backlog.</div></div>
+          <div class="hb-time">1 &ndash; 4 weeks (up to 6 &ndash; 8)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CH 1 ===================== -->
+    <section id="sec-ch1" class="chapter-section hidden">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 1</div>
+        <div class="chapter-title">Introduction</div>
+        <div class="chapter-subtitle">Why the Agile Extension exists, what agile business analysis is, and how the book is structured.</div>
+      </div>
+      <div class="points-grid">
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Agile is a mindset, not a set of practices</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Agile ideas began in software but have spread into any area of the business where change happens quickly &mdash; so business analysis has to evolve to support those new ways of working. The Extension uses "agile" to mean a <strong>way of thinking about work</strong>, not a particular toolkit. There is no single approach that fits every context; part of the practitioner's skill is picking the most effective technique for the situation.</div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Why a Version 2? Linking agile BA to BABOK v3</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Version 1 came out in 2013; the state of practice moved on. Version 2 (2017) exists mainly to describe the link between <strong>business analysis practised with an agile mindset</strong> and the <strong>BABOK&reg; Guide v3</strong>. Its biggest structural addition is a <strong>multi-level, rolling planning model</strong> built on three horizons &mdash; Strategy, Initiative, Delivery &mdash; where each horizon gives context and scope to the one below it.</div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Agile delivery = fast feedback + short decision cycles</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Agile delivery is framed as a <strong>business strategy</strong> that creates value through rapid feedback. Planning takes two forms: <strong>iterative</strong> (prioritise and refine in short cycles to maximise learning) and <strong>adaptive</strong> (continuously change long-term plans as you learn). Value is delivered <strong>incrementally</strong> &mdash; slice the product small, prioritise by value, ship often. The Extension is approach-agnostic: techniques from both forms can be combined.</div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Feedback is the organisation's learning engine</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Organisations get feedback from customers, competitors, partners, investors, SMEs, and regulators. Agile BA uses that feedback to <strong>prioritise what delivers most value and eliminate what doesn't</strong>. Because delivery always involves uncertainty, delivering value in a <strong>minimum viable way, as early as possible</strong>, is how you learn what's actually valuable and minimise waste.</div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">What agile BA practitioners actually do</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            Four core activities:
+            <ul>
+              <li><strong>Link strategy to initiatives</strong> &mdash; connect the organisation's goals to the work resourced to achieve them.</li>
+              <li><strong>Discover, interpret, and communicate</strong> information to clarify where value can be created.</li>
+              <li><strong>Clarify for whom</strong> value is created, who contributes, and who else is impacted.</li>
+              <li><strong>Help stakeholders decide</strong> on approaches, priorities, and trade-offs amid constraints, differing opinions, risk, and complexity.</li>
+            </ul>
+            Alongside this: "maximising the amount of work not done" as a deliberate waste-reduction strategy, and fostering an environment of creativity, rapid learning, and experimentation.
+          </div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Three horizons, three granularities</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            A planning horizon is a view of work at a <strong>granularity appropriate to its time frame and feedback loops</strong>. Organisations may use different names and spans &mdash; the concept of planning at multiple nested horizons is what matters.
+            <ul>
+              <li><strong>Strategy</strong>: all work across the organisation; which initiatives to fund, how, and how to monitor them. Feedback = are business goals being met?</li>
+              <li><strong>Initiative</strong>: one product (internal or customer-facing); its features and how they split into discrete pieces of value. Feedback = customer/user interaction with the product.</li>
+              <li><strong>Delivery</strong>: where work happens; teams build pieces from a value-prioritised list using iterative/adaptive and incremental techniques.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="point-card border-1" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">How the book is organised</div><div class="point-toggle">+</div></div>
+          <div class="point-detail"><strong>Core content</strong>: chapters 4&ndash;6, the Strategy, Initiative, and Delivery Horizons. <strong>Extended content</strong>: chapters 2, 3, and 7 (Mindset, Multiple Horizons, Techniques). <strong>Appendices</strong>: Glossary, a mapping of every BABOK&reg; task to the three horizons, Contributors, and a summary of changes from v1.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CH 2 ===================== -->
+    <section id="sec-ch2" class="chapter-section hidden">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 2</div>
+        <div class="chapter-title">The Agile Mindset</div>
+        <div class="chapter-subtitle">Values from the Agile Manifesto, a shared vocabulary from the BACCM, and seven principles that guide agile business analysis.</div>
+      </div>
+
+      <div class="callout"><em>One-liner:</em> maximise the outcome (value delivered) with minimum output &mdash; <em>"do less and do the right things, right."</em></div>
+
+      <div class="points-grid">
+        <div class="point-card border-2" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">What an agile mindset consists of</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            Rooted in human values &mdash; respect, courage, collaboration, continuous learning, customer focus, value maximisation. The main aspects:
+            <ul>
+              <li>Deliver value rapidly and consistently</li>
+              <li>Collaborate courageously</li>
+              <li>Iterate to learn</li>
+              <li>Simplify to avoid waste</li>
+              <li>Consider context and adapt to realities</li>
+              <li>Reflect on feedback and adapt both product and process</li>
+              <li>Produce the highest-quality products</li>
+            </ul>
+          </div>
+        </div>
+        <div class="point-card border-2" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Mindset vs methodology vs framework</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">A <strong>mindset</strong> describes attitudes and ideas, not exact actions. The particular combination of techniques, processes, and tools a team picks for its context is its <strong>methodology</strong>. Branded <strong>frameworks</strong> (Scrum, Kanban, XP, Lean, SAFe, LeSS, DAD&hellip;) are bundles of practices proven in <em>some</em> context &mdash; they share respect for people, rapid delivery and feedback, collaboration for shared understanding, and slicing work into small increments of value. But the context where a framework worked once may not match yours: there is no "one size fits all", and many teams mix practices from several frameworks.</div>
+        </div>
+        <div class="point-card border-2" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Why agile applies to business analysis at all</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">The ideas behind agile predate software and apply to any domain that derives value from <strong>creative human work</strong> &mdash; marketing, law and architecture firms, consultancies, pharma discovery. Business analysis is human-centric, exploratory, and creative, and its results change how organisations run. So it fits.</div>
+        </div>
+        <div class="point-card border-2" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">The Agile Manifesto, re-read for analysis</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            Swap "working software" for <strong>"working solution"</strong> and the Manifesto becomes a philosophy of analysis:
+            <ul>
+              <li><strong>"We are uncovering better ways&hellip; by doing it"</strong> &mdash; the most important line: agile is empirical. You learn what works by trying, not theorising.</li>
+              <li><strong>Individuals and interactions</strong> &mdash; BA is human-centric; solutions change how people work, so put people at the centre.</li>
+              <li><strong>Working solutions over comprehensive documentation</strong> &mdash; produce something, show it, get feedback. Documentation has value only when written for its actual purpose.</li>
+              <li><strong>Customer collaboration</strong> &mdash; understanding of the need is refined by showing increments and analysing responses; collaboration also surfaces <em>new</em> needs.</li>
+              <li><strong>Responding to change over following a plan</strong> &mdash; agile does plan (e.g. a product roadmap), but success is measured by how well the solution satisfies the need, not plan conformance.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="sub">The Business Analysis Core Concept Model&trade; (BACCM&trade;)</h3>
+      <p style="font-size:15px;color:var(--text-dim);font-weight:300;margin-bottom:6px">Six concepts from BABOK&reg; v3 that give every BA practitioner a common language. Click one to see its definition and which agile principle it maps to.</p>
+      <div class="pill-grid" id="baccmGrid"></div>
+      <div class="pill-detail" id="baccmDetail"></div>
+
+      <h3 class="sub" id="principles">The seven principles of agile business analysis</h3>
+      <p style="font-size:15px;color:var(--text-dim);font-weight:300;margin-bottom:6px">Click a principle for its full meaning. Chapters 4&ndash;6 show how each one is applied at every horizon.</p>
+      <div class="pill-grid" id="princGrid"></div>
+      <div class="pill-detail" id="princDetail"></div>
+    </section>
+
+    <!-- ===================== CH 3 ===================== -->
+    <section id="sec-ch3" class="chapter-section hidden">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 3</div>
+        <div class="chapter-title">Analysis at Multiple Horizons</div>
+        <div class="chapter-subtitle">Why one plan isn't enough: nested planning horizons, how feedback travels between them, and the economics of predictive, iterative, and adaptive planning.</div>
+      </div>
+
+      <div class="points-grid">
+        <div class="point-card border-7" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Sense-and-respond locally, look ahead globally</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">In fast-changing environments organisations must respond to local opportunities and problems <strong>without involving the whole organisation</strong>, while still watching for emerging threats and opportunities. Horizons frame the shift in focus between long-term strategic needs and the immediate needs of a customer. Several practitioners may each focus on one horizon, or one person may span several &mdash; either way, <strong>constant communication across horizons</strong> is essential.</div>
+        </div>
+        <div class="point-card border-7" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Same mindset and principles at every horizon &mdash; applied differently</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">The agile mindset, the seven principles, and many of the same practices apply at all three horizons. What changes is <strong>who is involved</strong>, the <strong>time span</strong>, the <strong>level of detail</strong>, and how techniques are applied. Appendix B maps every BABOK&reg; task to each horizon. Ongoing collaboration across horizons gives decision makers more current, accurate information &mdash; and better outcomes.</div>
+        </div>
+      </div>
+
+      <h3 class="sub">Horizon explorer</h3>
+      <p style="font-size:15px;color:var(--text-dim);font-weight:300;margin-bottom:6px">Click a horizon to see its decisions, time frame, and feedback relationships.</p>
+      <div class="horizon-stack">
+        <div class="horizon-band hb-s" onclick="showHorizon('s', this)">
+          <div><div class="hb-name">Strategy Horizon</div><div class="hb-purpose">Decisions that impact the entire organisation</div></div>
+          <div class="hb-time">Rolling &middot; 3 months to years</div>
+        </div>
+        <div class="horizon-band hb-i" onclick="showHorizon('i', this)">
+          <div><div class="hb-name">Initiative Horizon</div><div class="hb-purpose">Decisions that impact a particular goal, initiative, or team</div></div>
+          <div class="hb-time">Rolling &middot; next 1&ndash;3 months</div>
+        </div>
+        <div class="horizon-band hb-d" onclick="showHorizon('d', this)">
+          <div><div class="hb-name">Delivery Horizon</div><div class="hb-purpose">Decisions about delivering the solution</div></div>
+          <div class="hb-time">Rolling &middot; 1&ndash;4 weeks</div>
+        </div>
+      </div>
+      <div class="horizon-detail hb-s" id="hz-s">
+        <h4>Decisions supported</h4>
+        Strategy and the allocation of resources to support it: which products, services, and initiatives get resources. Practitioners identify short-term goals, initiatives, and risks aligned to strategy, and articulate the problems that must be understood to decide.
+        <h4>Time frame</h4>
+        Three months to multiple years, continually shifting forward &mdash; a <b>rolling</b> time frame.
+        <h4>Feedback</h4>
+        Receives learning synthesised from multiple initiatives; sends context, goals, and funding decisions down. Constantly asks: what can we do to add value, and how do we learn valuable lessons quickly?
+        <h4>Go deeper</h4>
+        <span style="color:var(--strategy);cursor:pointer;font-weight:500" onclick="showChapter('ch4')">Chapter 4: Strategy Horizon &rarr;</span>
+      </div>
+      <div class="horizon-detail hb-i" id="hz-i">
+        <h4>Decisions supported</h4>
+        How to create value with the resources available for one initiative; understanding stakeholder needs and the options. May support a single team or several interdependent teams with complex dependencies.
+        <h4>Time frame</h4>
+        Shorter than Strategy, longer than Delivery &mdash; roughly the upcoming one to three months, rolling.
+        <h4>Feedback</h4>
+        The hinge between the other two: learning here supports analysis at <b>both</b> Strategy and Delivery. Sends priority and sequence down; sends resource and scope impacts up.
+        <h4>Go deeper</h4>
+        <span style="color:var(--initiative);cursor:pointer;font-weight:500" onclick="showChapter('ch5')">Chapter 5: Initiative Horizon &rarr;</span>
+      </div>
+      <div class="horizon-detail hb-d" id="hz-d">
+        <h4>Decisions supported</h4>
+        How best to break down work, how to deliver and test the value being created, and how to learn quickly from the work. The team pulls prioritised work from the backlog and turns it into a valuable product or service.
+        <h4>Time frame</h4>
+        Very short term &mdash; one to four weeks, up to six to eight &mdash; rolling.
+        <h4>Feedback</h4>
+        Rapid, in small chunks, from testing and customer evaluation. Learning that is too broad or far-reaching is passed up to Initiative or Strategy.
+        <h4>Go deeper</h4>
+        <span style="color:var(--delivery);cursor:pointer;font-weight:500" onclick="showChapter('ch6')">Chapter 6: Delivery Horizon &rarr;</span>
+      </div>
+
+      <h3 class="sub" id="planning">Predictive, iterative, and adaptive planning</h3>
+      <p style="font-size:15px;color:var(--text-dim);font-weight:300;margin-bottom:6px">Three root forms of planning. Real organisations combine them; the Extension argues adaptive planning is central to agile BA.</p>
+      <div class="seg" id="planSeg">
+        <button class="on" onclick="showPlan('adaptive', this)">Adaptive</button>
+        <button onclick="showPlan('iterative', this)">Iterative</button>
+        <button onclick="showPlan('predictive', this)">Predictive</button>
+      </div>
+      <div class="plan-panel show" id="plan-adaptive">
+        <div class="plan-cell wide"><h5>What it is</h5>Both long- and short-term planning, where long-term plans are expected to change and are easy to change. Short-term plans inform the long-term ones. Sometimes called <b>rolling wave planning</b>: every plan is a <b>hypothesis to be proven</b>, adjusted in real time as feedback and lessons arrive. Higher horizons are longer and more abstract, so there is less detail to change and less resistance to changing it.</div>
+        <div class="plan-cell"><h5>Economic assumption</h5>Cost of change rises as work progresses, and the opportunity cost of suppressing feedback is high. Learning comes from ongoing analysis and feedback; implementation is continuous and creates learning for future work.</div>
+        <div class="plan-cell"><h5>Planning horizon</h5>Continuous and <b>nested (fractal)</b>: strategic planning gives vision and scope to initiatives, while information from delivered work feeds back into strategic thinking.</div>
+        <div class="plan-cell good"><h5>Benefits</h5>The organisation can rapidly "sense and respond" to new information while keeping sight of long-term goals, so the real cost of change falls. Creates a context that supports an agile mindset.</div>
+        <div class="plan-cell bad"><h5>Issues</h5>Significant complexity in constantly updating plans; demands continuous collaboration and feedback. Can look inefficient. Without transparency, trust, and collaboration it produces confusion, mistakes, and wasted effort.</div>
+      </div>
+      <div class="plan-panel" id="plan-iterative">
+        <div class="plan-cell wide"><h5>What it is</h5>Used when rapid change and uncertainty make long-term planning ineffective: the next step is based on the <b>latest learning</b>. Each hypothesis is tested before planning the next move, because stakeholders are learning what they need at the same time as planning happens. Plans are viable only for the immediate future &mdash; perhaps the next one to four weeks.</div>
+        <div class="plan-cell"><h5>Economic assumption</h5>Cost of change is flat; it does not grow as work progresses. High opportunity cost if learning is suppressed. Learning is best facilitated by quickly building and soliciting feedback.</div>
+        <div class="plan-cell"><h5>Planning horizon</h5>A series of short, detailed horizons. A plan exists only for the current iteration and takes advantage of the latest feedback.</div>
+        <div class="plan-cell good"><h5>Benefits</h5>Highly responsive to learning. Very efficient &mdash; there is no long plan to maintain. Practitioners spot opportunities and threats as they emerge through constant testing of assumptions.</div>
+        <div class="plan-cell bad"><h5>Issues</h5>Doesn't scale well and can feel ad hoc. Lack of a longer-range objective can make planning random. In large or complex contexts there may be insufficient time to analyse ideas that touch many parts of the solution, leading to rework.</div>
+      </div>
+      <div class="plan-panel" id="plan-predictive">
+        <div class="plan-cell wide"><h5>What it is</h5>Detailed analysis and planning up front, then execution. Driven by the <b>cost-of-change curve</b>: the later a mistake is found, the more it costs to fix, so spend more time analysing early to minimise gaps and defects. Scope and risk are predicted at the start; the planning horizon is the whole project; deviations are treated as risks to be corrected.</div>
+        <div class="plan-cell"><h5>Economic assumption</h5>Cost of change grows exponentially. Low opportunity cost from suppressed learning because scope can be defined early. Learning is best done through up-front analysis.</div>
+        <div class="plan-cell"><h5>Planning horizon</h5>A single long, detailed horizon spanning the duration of the project. All work is measured as conformance to the plan.</div>
+        <div class="plan-cell good"><h5>Benefits</h5>Well understood by any organisation. Efficiency comes from certainty in executing an existing plan. A well-prepared planner can identify risks and build contingencies.</div>
+        <div class="plan-cell bad"><h5>Issues</h5>Slow to respond to learning and may actively suppress it. An unforeseen event can disrupt the plan &mdash; or worse, an opportunity can't be taken because changing the plan is impractical.</div>
+      </div>
+    </section>
+
+    <!-- ===================== CH 4 ===================== -->
+    <section id="sec-ch4" class="chapter-section hidden">
+      <div class="chapter-header">
+        <div class="chapter-num" style="color:var(--strategy)">Chapter 4 &middot; Core content</div>
+        <div class="chapter-title">Strategy Horizon</div>
+        <div class="chapter-subtitle"><strong style="color:var(--text)">Purpose:</strong> inform decisions regarding the organisation's business goals. The widest scope, the longest look-ahead, and the least detail.</div>
+      </div>
+
+      <div class="points-grid">
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Value here = understanding and achieving business goals</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Goals change; consumer tastes shift; competitors disrupt; regulations move. The Strategy Horizon <strong>continually reassesses the priority of goals</strong> and evaluates emerging opportunities, so the organisation can redeploy resources as fast as it learns. The challenge: information here is often overwhelming, obscure, uncertain, even contradictory &mdash; and even good information is hard to communicate. The risk is decisions made on outdated or wrong data when dependable data exists somewhere in the organisation.</div>
+        </div>
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Observe change across a broad horizon</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            Analysis scope extends beyond any single initiative. Practitioners make sense of change in five areas:
+            <ul>
+              <li><strong>Customer expectations</strong> &mdash; including shifts invisible to initiative teams, via research and analytics.</li>
+              <li><strong>The outside environment</strong> &mdash; competitors, economic and social conditions, emerging technology.</li>
+              <li><strong>Inside the organisation</strong> &mdash; constant internal change forces redirection of resources and new goals.</li>
+              <li><strong>Learning from the front line</strong> &mdash; a major economic driver for agile is learning quickly which initiatives to <em>stop</em> funding (value delivered, or never going to be) and which to boost.</li>
+              <li><strong>Threats and opportunities</strong> &mdash; start an initiative to counter or exploit; change resourcing, scope or success criteria; cancel what's become less relevant.</li>
+            </ul>
+            Timeliness matters: observations must be acted on fast enough to still be relevant.
+          </div>
+        </div>
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Level of detail: stop before the initiative specifics</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Strategy-level analysis understands how organisational goals map to initiative goals, then <strong>stops</strong> &mdash; the people inside each initiative are better placed to analyse its details. The Strategy practitioner identifies a potential need and gives the Initiative team <strong>just enough</strong> to understand it and develop solutions. Focus stays on risks, changing circumstances, and new needs that might re-prioritise decisions across initiatives. There is no clean hand-off line between horizons.</div>
+        </div>
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Reduce complexity so decisions can be made</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">The systems being analysed (initiative performance, competitor moves, shifting inputs) are unstable and understanding is always incomplete. Practitioners break systems into parts and use <strong>models</strong> to reduce large volumes of confusing data into enough information for a <strong>defensible and testable decision</strong>.</div>
+        </div>
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Time frame: a rolling 3 months to many years</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Much of the analysis is speculation about the future. The further out you look, the more plans become <strong>aspirational hypotheses</strong> rather than facts. The guiding question: <em>"as an organisation, what do we need to learn to prove or disprove our long-term hypothesis?"</em> Practitioners constantly switch between micro-detail of a potential change and the broad view of its impact on the whole.</div>
+        </div>
+        <div class="point-card border-4" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Feedback &amp; learning: the five "should we start?" questions</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            Decision makers often delay launching initiatives because they can't learn fast enough to feel confident. Agile BA provides <strong>just enough information</strong> to decide, by answering:
+            <ul>
+              <li>Is there a need to satisfy?</li>
+              <li>Is the need aligned with our strategic objectives?</li>
+              <li>Is it worth satisfying?</li>
+              <li>Do we believe we have the right team for a good-enough solution?</li>
+              <li>Can we measure the initiative's success?</li>
+            </ul>
+            Once started, further analysis moves to the Initiative Horizon. Because many practitioners and decision makers work independently in different domains (an accountant watching cash flow, a marketer watching customer behaviour), the BA's role is to <strong>facilitate feedback and learning between them</strong>.
+          </div>
+        </div>
+      </div>
+
+      <h3 class="sub">Applying the seven principles here</h3>
+      <div class="points-grid" id="princ-ch4"></div>
+
+      <h3 class="sub">Techniques used at this horizon</h3>
+      <div class="point-card border-4" onclick="toggleCard(this)">
+        <div class="point-header"><div class="point-title">Agile Extension techniques</div><div class="point-toggle">+</div></div>
+        <div class="point-detail">
+          <ul>
+            <li><strong>Minimal Viable Product</strong> &mdash; prioritise resource allocation and speed up organisational learning.</li>
+            <li><strong>Planning Workshops</strong> &mdash; allocate resources across initiatives; build shared understanding of a new initiative's purpose.</li>
+            <li><strong>Portfolio Kanban</strong> &mdash; real-time visibility of initiative progress across the portfolio.</li>
+            <li><strong>Product Roadmap</strong> &mdash; communicate future direction; improve collaboration between initiatives.</li>
+            <li><strong>Purpose Alignment Model</strong> &mdash; prioritise initiatives and understand resourcing mix.</li>
+            <li><strong>Real Options</strong> &mdash; know when to decide.</li>
+            <li><strong>Relative Estimation</strong> &mdash; quickly gauge relative value and resource needs of potential initiatives.</li>
+            <li><strong>Value Stream Mapping</strong> &mdash; see value creation across the whole customer experience.</li>
+            <li><strong>Visioning</strong> &mdash; clarify the organisation's vision; identify purpose and focus for a new initiative.</li>
+          </ul>
+          <span style="color:var(--accent1);cursor:pointer;font-weight:500" onclick="event.stopPropagation(); openTechniques('s')">Open these in the Techniques Library &rarr;</span>
+        </div>
+      </div>
+      <div style="height:16px"></div>
+      <div class="point-card border-4" onclick="toggleCard(this)">
+        <div class="point-header"><div class="point-title">BABOK&reg; Guide techniques</div><div class="point-toggle">+</div></div>
+        <div class="point-detail">Backlog Management &middot; Balanced Scorecard &middot; Benchmarking and Market Analysis &middot; Business Capability Analysis &middot; Business Cases &middot; Business Model Canvas &middot; Metrics and KPIs &middot; Organizational Modelling &middot; Risk Analysis and Management &middot; Stakeholder List, Map, or Personas &middot; SWOT Analysis &middot; Vendor Assessment.<p>Notable framings: the <strong>Business Model Canvas</strong> is used to see how value is created, captured, and delivered across the organisation so strategic decisions can be made quickly; <strong>Organizational Modelling</strong> ensures initiatives create value the wider organisation can actually deliver.</p></div>
+      </div>
+    </section>
+
+    <!-- ===================== CH 5 ===================== -->
+    <section id="sec-ch5" class="chapter-section hidden">
+      <div class="chapter-header">
+        <div class="chapter-num" style="color:var(--initiative)">Chapter 5 &middot; Core content</div>
+        <div class="chapter-title">Initiative Horizon</div>
+        <div class="chapter-subtitle"><strong style="color:var(--text)">Purpose:</strong> inform decisions regarding solution options, features, priorities, and lifespan. The goal: deliver a solution that minimises output and maximises outcome.</div>
+      </div>
+
+      <div class="callout"><em>The six questions this horizon answers:</em> What solution options satisfy the need? &middot; Which gives maximum outcome for minimum output within constraints? &middot; What are the components (features) of the preferred option? &middot; What should be delivered now, next, and in future? &middot; Has enough value been delivered to satisfy the need? &middot; Should the solution <em>continue, change, or be cancelled</em>?</div>
+
+      <div class="points-grid">
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">What flows in from Strategy</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Three things, communicated continuously: the <strong>shared understanding of the need</strong>, <strong>why the need exists</strong>, and the <strong>determination that it's worth satisfying</strong> given current understanding of benefits, risks, and constraints. The Initiative Horizon is largely about how much and what kind of analysis is needed to support a <em>series of decisions</em>, from defining the need to identifying the solution aspects that will satisfy it.</div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Identify solution options</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Most solutions are complex enough to have multiple viable options, each with multiple components (features). To assess options the team needs shared understanding of the need and <strong>clear, measurable objectives</strong>. Practitioners consider: the shared understanding of the need, assumptions about viability, risks introduced, a very broad description of each option, and constraints that rule options out. Generating options also surfaces previously unknown information.</div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Recommend an option (same precision for every option)</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Recommend the option with maximum outcome for minimum output within constraints; the accountable decision maker decides whether to proceed. Compare options at the <strong>same level of precision</strong>, with just enough information for an accurate decision. Practitioners validate assumptions, identify ways to assess practicality, consider impacts on people, processes, tools, systems, and vendors, assess projected impact on the need, and estimate cost in time, money or other resources. <strong>Experimentation</strong> is encouraged &mdash; just enough to pick an option.</div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Identify components &mdash; this list becomes the backlog</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">With stakeholders, identify the parts of the solution that deliver the outcome (in agile contexts: <strong>features</strong>). Each is evaluated against outcome, cost, impact, and constraints at a moderate, consistent level of precision. The resulting list is what many agile contexts call the <strong>backlog</strong>. This is iterative: items are added and removed as understanding of each component's value emerges.</div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Prioritise and sequence (refining the backlog)</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            Assess priority and sequence on:
+            <ul>
+              <li>impact of each component on the overall outcome</li>
+              <li>cost (actual or in team capacity)</li>
+              <li>current state of the initiative</li>
+              <li>stakeholder feedback</li>
+              <li>current performance toward the outcome</li>
+              <li>current understanding of constraints and risks</li>
+            </ul>
+            Re-done many times: whenever new information arrives, and at release planning, roadmap updates, iteration planning, or scheduled prioritisation sessions.
+          </div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Is the need satisfied yet? Ask after every component</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Judged by whether outputs delivered meet the desired <strong>outcome</strong> &mdash; not by whether all planned components are done. Practitioners consider it <strong>every time a component ships and feedback returns</strong>, which cuts the risk of producing more output than needed. Once the outcome is achieved, effort shifts to the next need. If not, consider continue / change / cancel.</div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Ongoing viability: continue, change, or cancel</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            Solutions are continually assessed against identified measures of success and feedback from both other horizons. If the solution isn't delivering enough value, or new information changes things, practitioners can <strong>change</strong> it (add/remove components, re-sequence) or <strong>cancel</strong> the initiative so resources can be redeployed. Viability is judged on:
+            <ul>
+              <li>impact of the current solution on the outcomes</li>
+              <li>identified measures of success</li>
+              <li>anticipated work to finish the component list</li>
+              <li>ongoing assessment of constraints and risks</li>
+              <li>a clarified understanding of the need from Delivery</li>
+              <li>a clarified understanding of the need's strategic relevance from Strategy</li>
+            </ul>
+          </div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Time frame &amp; the roadmap questions</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Mid-term: as a general reference, the <strong>upcoming one to three months</strong>, rolling forward. Three driving questions form the basis of a solution roadmap: <strong>What outcomes are we driving now? What will we address next? What will we address in the future?</strong></div>
+        </div>
+        <div class="point-card border-3" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Feedback in both directions</div><div class="point-toggle">+</div></div>
+          <div class="point-detail"><strong>From Delivery</strong>, feedback tells you whether the option and components are still appropriate, whether they're sequenced correctly, and whether every component actually needs delivering. <strong>To Strategy</strong>, the Initiative Horizon reports changes that may affect other initiatives &mdash; a cancellation frees resources; a scope change may need more. <strong>To Delivery</strong>, it sends priority and sequencing.</div>
+        </div>
+      </div>
+
+      <h3 class="sub">Applying the seven principles here</h3>
+      <div class="points-grid" id="princ-ch5"></div>
+
+      <h3 class="sub">Techniques used at this horizon</h3>
+      <div class="point-card border-3" onclick="toggleCard(this)">
+        <div class="point-header"><div class="point-title">Agile Extension techniques</div><div class="point-toggle">+</div></div>
+        <div class="point-detail">
+          <ul>
+            <li><strong>Kano Analysis</strong> &mdash; which features matter most to satisfying the need, and how to deliver them.</li>
+            <li><strong>Personas</strong> &mdash; shared understanding of who the customer is; core to Think as a Customer.</li>
+            <li><strong>Planning Workshops</strong> &mdash; shared understanding of the approach to constructing the solution.</li>
+            <li><strong>Purpose Alignment Model</strong> &mdash; feature relevance and delivery approach.</li>
+            <li><strong>Real Options</strong> &mdash; the right time to decide.</li>
+            <li><strong>Relative Estimation</strong> &mdash; which features, in what order.</li>
+            <li><strong>Retrospectives</strong> &mdash; explicit discussion of continuous improvement.</li>
+            <li><strong>Story Decomposition</strong> &mdash; which features, in what order, and how much of each is needed.</li>
+            <li><strong>Story Mapping</strong> &mdash; elicit and model the solution and its notable features.</li>
+            <li><strong>Value Stream Mapping</strong> &mdash; which parts of the problem/solution alter value.</li>
+          </ul>
+          <span style="color:var(--accent1);cursor:pointer;font-weight:500" onclick="event.stopPropagation(); openTechniques('i')">Open these in the Techniques Library &rarr;</span>
+        </div>
+      </div>
+      <div style="height:16px"></div>
+      <div class="point-card border-3" onclick="toggleCard(this)">
+        <div class="point-header"><div class="point-title">BABOK&reg; Guide techniques</div><div class="point-toggle">+</div></div>
+        <div class="point-detail">Backlog Management &middot; Balanced Scorecard &middot; Brainstorming &middot; Collaborative Games &middot; Concept Modelling &middot; Data Dictionary &middot; Data Modelling &middot; Document Analysis &middot; Functional Decomposition &middot; Glossary &middot; Interface Analysis &middot; Interviews &middot; Metrics and KPIs &middot; Observation &middot; Prioritization &middot; Process Modelling &middot; Prototyping &middot; Risk Analysis and Management &middot; Scope Modelling &middot; Stakeholder List, Map, or Personas &middot; Vendor Assessment.<p>Most are framed as ways to <strong>build and maintain shared understanding</strong> of the need and solution, or to elicit the information needed for Initiative-level decisions. Prototyping is called out as a way of "Getting Real with Examples".</p></div>
+      </div>
+    </section>
+
+    <!-- ===================== CH 6 ===================== -->
+    <section id="sec-ch6" class="chapter-section hidden">
+      <div class="chapter-header">
+        <div class="chapter-num" style="color:var(--delivery)">Chapter 6 &middot; Core content</div>
+        <div class="chapter-title">Delivery Horizon</div>
+        <div class="chapter-subtitle"><strong style="color:var(--text)">Purpose:</strong> inform decisions regarding the delivery of the solution. Where the work happens: slicing, refining, and shipping increments from a prioritised backlog.</div>
+      </div>
+
+      <div class="points-grid">
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">What analysis looks like here</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Focus on the specific slice of the solution being implemented now. Practitioners ensure shared understanding of the need, identify and prioritise a backlog of actions, and set up a way to assess outcomes &mdash; spending the <strong>least effort</strong> needed to make informed decisions. Requirements are mapped clearly to business goals. User stories are sliced and elaborated <strong>just-in-time</strong> into implementable units of value; feedback from testing and customers creates, alters, re-prioritises, and removes backlog items.</div>
+        </div>
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">When is a user story "ready"?</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">
+            A story is well-written when it:
+            <ul>
+              <li>meets the <strong>INVEST</strong> criteria (Independent, Negotiable, Valuable, Estimable, Sized appropriately, Testable)</li>
+              <li>has a well-constructed narrative</li>
+              <li>has clear, concise, precise acceptance criteria</li>
+              <li>is accepted as a desirable unit of implementation</li>
+              <li>is an achievable unit of development</li>
+              <li>is clearly prioritised in the backlog</li>
+            </ul>
+            A story only needs to be ready when it's about to go into development. <strong>Refining too early causes rework and waste</strong> because conditions change.
+          </div>
+        </div>
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Maintaining the backlog: two jobs</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">(1) <strong>Priority sequencing</strong> &mdash; with the product owner, rapid delivery of business value as the central consideration; backlog order must reflect the PO's priority. (2) <strong>Enough ready items</strong> for near-term development &mdash; create features, decompose into stories, refine into well-written stories. Feedback from delivered work changes the backlog continuously, formally in refinement meetings or informally as needed.</div>
+        </div>
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Supporting successful delivery</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Clear analysis-related roadblocks and apply learning so they don't recur: handle story sequencing and dependencies, coordinate with external teams and stakeholders, and answer clarifying questions on items currently mid-implementation.</div>
+        </div>
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Making sure learning happens &mdash; process and product</div><div class="point-toggle">+</div></div>
+          <div class="point-detail"><strong>Process learning</strong>: what should be changed, kept, or stopped in the next cycle? Retrospectives are the usual forum. <strong>Product learning</strong>: did the last increment deliver the value expected? Answers may change the nature or priority of near-term stories. Anything too broad, large, or far-off is passed up as feedback to the Initiative or Strategy Horizons. Better outcomes can be quantitative or qualitative.</div>
+        </div>
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Keep focus on vision, customer, and value</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Apply BA techniques and the seven principles to stay anchored to the value being sought and the product vision. Constant communication and a shared understanding of need and outcomes help every stakeholder avoid waste and deliver value quickly.</div>
+        </div>
+        <div class="point-card border-5" onclick="toggleCard(this)">
+          <div class="point-header"><div class="point-title">Time frame &amp; feedback cadence</div><div class="point-toggle">+</div></div>
+          <div class="point-detail">Day-to-day delivery planning over roughly <strong>one to four weeks</strong>, up to six to eight, rolling forward. Feedback is rapid and in small chunks; each story is a small increment, but significant feedback usually needs a <em>collection</em> of stories across several increments. Feedback arrives through structured events (reviews, retrospectives) and informally through daily work. <strong>Avoid Waste</strong> and <strong>Analyze to Determine What is Valuable</strong> guide the refinement decisions it drives.</div>
+        </div>
+      </div>
+
+      <h3 class="sub">Applying the seven principles here</h3>
+      <div class="points-grid" id="princ-ch6"></div>
+
+      <h3 class="sub">Techniques used at this horizon</h3>
+      <div class="point-card border-5" onclick="toggleCard(this)">
+        <div class="point-header"><div class="point-title">Agile Extension techniques</div><div class="point-toggle">+</div></div>
+        <div class="point-detail">
+          <ul>
+            <li><strong>Personas</strong> &mdash; who the customer is.</li>
+            <li><strong>Real Options</strong> &mdash; when to decide, and the value of each option.</li>
+            <li><strong>Relative Estimation</strong> &mdash; which features, in what order.</li>
+            <li><strong>Retrospectives</strong> &mdash; explicit continuous improvement.</li>
+            <li><strong>Story Decomposition</strong> &mdash; epics to stories that represent incremental work on components.</li>
+            <li><strong>Story Mapping</strong> &mdash; elicit and model the solution.</li>
+            <li><strong>Value Stream Mapping</strong> &mdash; which parts alter value.</li>
+          </ul>
+          Also central here though listed in ch. 7: <strong>Backlog Refinement, BDD, Story Elaboration, User Stories, Spikes, Reviews, Planning Workshops</strong>.
+          <br><span style="color:var(--accent1);cursor:pointer;font-weight:500" onclick="event.stopPropagation(); openTechniques('d')">Open these in the Techniques Library &rarr;</span>
+        </div>
+      </div>
+      <div style="height:16px"></div>
+      <div class="point-card border-5" onclick="toggleCard(this)">
+        <div class="point-header"><div class="point-title">BABOK&reg; Guide techniques</div><div class="point-toggle">+</div></div>
+        <div class="point-detail">Backlog Management (frequent if not constant) &middot; Balanced Scorecard &middot; Brainstorming &middot; Collaborative Games &middot; Concept Modelling &middot; Data Modelling &middot; Functional Decomposition (epics &rarr; stories, each with business value on completion) &middot; Glossary &middot; Interface Analysis &middot; Interviews &middot; Metrics and KPIs (trace stories to the KPIs they should move) &middot; Observation &middot; Prioritization &middot; Process Modelling &middot; Prototyping &middot; Risk Analysis and Management (which stories affect which risks) &middot; Scope Modelling &middot; Stakeholder List, Map, or Personas.</div>
+      </div>
+    </section>
+
+    <!-- ===================== CH 7 ===================== -->
+    <section id="sec-ch7" class="chapter-section hidden">
+      <div class="chapter-header">
+        <div class="chapter-num">Chapter 7</div>
+        <div class="chapter-title">Techniques Library</div>
+        <div class="chapter-subtitle">24 techniques commonly used in agile business analysis. Filter by the horizon where the book recommends them, or by the context they serve. Click a card to open it.</div>
+      </div>
+
+      <div class="tech-search"><input type="text" id="techSearch" placeholder="Search techniques (e.g. 'estimation', 'customer', 'Gherkin')&hellip;" oninput="renderTechniques()"></div>
+      <div class="filters">
+        <span class="flabel">Horizon</span>
+        <button class="chip hs" data-h="s" onclick="toggleFilter(this,'h')">Strategy</button>
+        <button class="chip hi" data-h="i" onclick="toggleFilter(this,'h')">Initiative</button>
+        <button class="chip hd" data-h="d" onclick="toggleFilter(this,'h')">Delivery</button>
+      </div>
+      <div class="filters">
+        <span class="flabel">Context</span>
+        <button class="chip" data-c="Communication" onclick="toggleFilter(this,'c')">Communication</button>
+        <button class="chip" data-c="Process Analysis" onclick="toggleFilter(this,'c')">Process Analysis</button>
+        <button class="chip" data-c="Product Management" onclick="toggleFilter(this,'c')">Product Management</button>
+        <button class="chip" data-c="Requirements Management" onclick="toggleFilter(this,'c')">Requirements Management</button>
+        <button class="chip" data-c="Understanding Your Customer" onclick="toggleFilter(this,'c')">Understanding Your Customer</button>
+        <button class="chip" style="margin-left:auto" onclick="clearFilters()">Clear</button>
+      </div>
+      <div class="tech-count" id="techCount"></div>
+      <div class="tech-grid" id="techGrid"></div>
+    </section>
+
+    <!-- ===================== APP B ===================== -->
+    <section id="sec-appb" class="chapter-section hidden">
+      <div class="chapter-header">
+        <div class="chapter-num">Appendix B</div>
+        <div class="chapter-title">BABOK&reg; Tasks &times; Horizons</div>
+        <div class="chapter-subtitle">How each BABOK&reg; Guide knowledge area is applied with an agile mindset at the three horizons &mdash; condensed from the full task-by-task mapping. The mapping is guidance, not a rule: any task can be applied creatively at any horizon.</div>
+      </div>
+      <table class="maptable">
+        <tr><td>3. BA Planning &amp; Monitoring</td><td>
+          <span class="kh">Strategy</span>Decide that agile is the approach; keep planning lightweight. Establish an adaptive portfolio-management and decision framework for the whole organisation. Stakeholder engagement spans all initiatives.
+          <span class="ki">Initiative</span>Select the specific agile approach (Scrum, Kanban&hellip;) and decide how the backlog will be refined and prioritised. Measures focus on the ability to learn and adapt.
+          <span class="kd">Delivery</span>Plan the fastest, most accurate way to decompose features to stories for the immediate work; define refinement rhythm, information radiators, and how change is communicated inside the team.
+        </td></tr>
+        <tr><td>4. Elicitation &amp; Collaboration</td><td>
+          <span class="kh">Strategy</span>Ongoing, broad, and lightweight &mdash; elicit and communicate about goals, markets, and risks with leaders across initiatives.
+          <span class="ki">Initiative</span>Elicit with the product owner and cross-functional team to understand options, features, and priorities; confirm understanding through examples and collaboration.
+          <span class="kd">Delivery</span>Continuous, conversational elicitation around stories (the "conversation" in the 3Cs); collaboration happens daily and in reviews and retrospectives.
+        </td></tr>
+        <tr><td>5. Requirements Life Cycle Management</td><td>
+          <span class="kh">Strategy</span>Trace initiatives to organisational goals; prioritise goals and initiatives rather than detailed requirements. Approval = empowering initiatives by communicating evolving assumptions, constraints, and goals.
+          <span class="ki">Initiative</span>Trace features to the goals and metrics set at Strategy. Prioritisation is about <em>which</em> features to deliver, not necessarily their order. Changes are assessed as a lightweight part of backlog refinement; approval happens when the lead selects a requirement for delivery.
+          <span class="kd">Delivery</span>Trace stories to features and outcomes. Monitor stories for staleness; revise, re-prioritise, or remove as needs change. Prioritisation changes frequently as learning arrives. Work is approved by someone other than its creator, ideally with a view of the value sought.
+        </td></tr>
+        <tr><td>6. Strategy Analysis</td><td>
+          <span class="kh">Strategy</span>Current and future state are continuously re-analysed through collaboration, feedback, and learning; multiple potential future states across time horizons are continually defined and redefined.
+          <span class="ki">Initiative</span>At the start, analyse the current state at a high level to understand the whole, then find the most valuable parts to change. Define the future state as the outcome the initiative pursues.
+          <span class="kd">Delivery</span>With the product owner, examine the specific portion of the current solution immediately affected; scope stays tightly focused on the near term.
+        </td></tr>
+        <tr><td>7. Requirements Analysis &amp; Design Definition</td><td>
+          <span class="kh">Strategy</span>Requirements may be ambiguous and expressed as organisational goals; make sure feedback frameworks exist to keep alignment as goals evolve.
+          <span class="ki">Initiative</span>Specify and model at the level of solution options and features; compare options at consistent precision; recommend the option that maximises outcome for minimum output.
+          <span class="kd">Delivery</span>Just-in-time, just-enough: elaborate stories into acceptance criteria and lightweight models for the upcoming iteration only.
+        </td></tr>
+        <tr><td>8. Solution Evaluation</td><td>
+          <span class="kh">Strategy</span>Evaluate whether initiatives are delivering against business goals; use that learning to fund, re-scope, or stop initiatives.
+          <span class="ki">Initiative</span>After every delivered component, ask whether the need is satisfied; assess ongoing viability and decide to continue, change, or cancel.
+          <span class="kd">Delivery</span>Evaluate each increment's value through reviews and feedback; feed the result back into the backlog and, where it's bigger than the team, up to the other horizons.
+        </td></tr>
+      </table>
+      <div class="footer-note">This condensed view paraphrases the appendix's task-by-task table (which covers all 30 BABOK&reg; v3 tasks). Other appendices in the book: A &mdash; Glossary; C &mdash; Contributors; D &mdash; Summary of changes from Version 1 (notably the shift from "levels" to the three-horizon model and the expanded techniques chapter).</div>
+    </section>
+
+    <div class="footer-note">
+      Interactive study dashboard based on the <em>Agile Extension to the BABOK&reg; Guide</em>, Version 2 (2017), &copy; International Institute of Business Analysis and Agile Alliance. BABOK&reg;, IIBA&reg; and BACCM&trade; are marks of IIBA. Content here is paraphrased for learning purposes; refer to the Guide itself for the authoritative text.
+    </div>
+  </main>
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+const BACCM = [
+  { k:'Change', c:'#6c63ff', def:'The act of transformation in response to a need.', p:'Change is central to <b>all</b> seven principles of agile business analysis.' },
+  { k:'Need', c:'#ff6b9d', def:'A problem or opportunity to be addressed.', p:'Maps to <b>Get Real Using Examples</b> &mdash; examples build shared understanding of the need.' },
+  { k:'Solution', c:'#30b8c5', def:'A specific way of satisfying one or more needs in a context.', p:'Maps to <b>Stimulate Collaboration and Continuous Improvement</b> &mdash; the solution and the process that builds it are both continually improved.' },
+  { k:'Stakeholder', c:'#ffd93d', def:'A group or individual with a relationship to the change, the need, or the solution.', p:'Maps to <b>Think as a Customer</b> &mdash; any stakeholder who interacts with the solution is a customer.' },
+  { k:'Value', c:'#6bcb77', def:'The worth, importance, or usefulness of something to a stakeholder within a context.', p:'Maps to <b>Get Real Using Examples</b> and <b>Avoid Waste</b>.' },
+  { k:'Context', c:'#ff8a5c', def:'The circumstances that influence, are influenced by, and provide understanding of the change.', p:'Maps to <b>See the Whole</b> &mdash; analyse the need in the context of the big picture.' },
+];
+
+const PRINCIPLES = [
+  { k:'See the Whole', c:'#6c63ff', short:'Analyse the need in its big-picture context.',
+    full:'Analyse the need in the context of the big picture, focusing on the business context and <b>why</b> a change is necessary. Examine the context in which the need exists and how it influences the solution. Value is created by understanding context, solution, and stakeholders together. Influenced by systems thinking.',
+    h:{ s:'Decisions incorporate a holistic view of the market, political climate, and the organisation\'s own capabilities, strengths, and challenges. Built through constant analysis, rapid feedback cycles, and deep collaboration with stakeholders across the organisation.',
+        i:'Continuous feedback from Strategy and Delivery informs every decision on options, components, priority, and viability. When choosing what to deliver next, keep the overall strategic need in mind &mdash; and judge whether the need is satisfied by that strategic need, not by how many components shipped.',
+        d:'Shared understanding of how individual stories advance business outcomes, plus a way to measure progress. Every backlog item is prioritised to contribute to the overall goal; improvement ideas from reviews and retros are assessed for their impact on the whole.' } },
+  { k:'Think as a Customer', c:'#ff6b9d', short:'Bring the voice of the customer into the solution.',
+    full:'Ensure solutions incorporate the voice of the customer through a clear understanding of the expected user experience. A customer is <b>any stakeholder that interacts with the solution</b>. Start high-level and progressively decompose into detailed needs; use feedback loops to validate as both the customer\'s and the organisation\'s understanding evolve.',
+    h:{ s:'Maintain a strategic focus on customer value. Without it, initiative teams may build experiences that are good in isolation but inconsistent as a combined customer journey. Align limited resources to the greatest overall customer value.',
+        i:'When prioritising and sequencing, ask: what would be most valuable to the customer? Is there a better sequence for them? Do I have more than one customer for this component? Delivering early and often gets real-world feedback from real customers.',
+        d:'Align the value delivered to the customer experiences learned from feedback. Personas (or roles) model customer needs. Stay conscious of who the customer is for each story and whether they\'d actually benefit from it.' } },
+  { k:'Analyze to Determine What is Valuable', c:'#30b8c5', short:'Continuously assess and prioritise to maximise value now.',
+    full:'Continuously assess and prioritise work to maximise the value being delivered at any point in time. Understand the purpose of requirements and keep solution options and components aligned to the desired outcome. Includes maximising the amount of work <b>not</b> done and delivering valuable solutions early and continuously.',
+    h:{ s:'Identify the strategic needs to be met and help decision makers allocate resources where effort creates the most value. New learning must be analysed quickly against recent, possibly uncertain, data.',
+        i:'Use the shared understanding of the need to identify options and prioritise components. Keeping valuable outcomes in mind speeds up decisions and exposes components that don\'t contribute directly to the outcome.',
+        d:'Use continuous feedback to maintain the backlog, with shared understanding of what is valuable and who derives it, story by story. Analyse process value too: is the team happier? Are defects and impediments falling? Is velocity up? Which improvement would matter most?' } },
+  { k:'Get Real Using Examples', c:'#ffd93d', short:'Build shared understanding with concrete examples.',
+    full:'Build a shared understanding of the need and how the solution will satisfy it, using examples to iteratively develop analysis models across dimensions such as user role, actions, data, and business rules. Abstraction varies with audience: abstract examples set scope when planning; detailed ones specify the solution when delivering. Examples also derive acceptance criteria, shape design, and ground testing.',
+    h:{ s:'Communicate current, evidence-based information to decision makers. Projections and assumptions go stale in a changing context; constantly identify changes to planning assumptions and their impact. When starting an initiative, state its goals, what is known, and which hypotheses are untested &mdash; so the team knows when to cancel or re-scope.',
+        i:'Start with examples of the most common customer scenarios; expand and refine them as the solution develops; use them to verify the solution still meets the need and to inform option, component, and viability decisions.',
+        d:'Use examples when prioritising stories and when writing clear, meaningful acceptance criteria; clarify the customer\'s experience of each story. Specific situations and impacts also make process-improvement proposals concrete.' } },
+  { k:'Understand What is Doable', c:'#6bcb77', short:'Deliver within real constraints.',
+    full:'Understand how to deliver a solution within given constraints &mdash; technology capabilities, team skills, and time available. Continually analyse the need and candidate solutions against known constraints, and use measures such as team capacity and velocity trends to keep expectations realistic.',
+    h:{ s:'Numerous threats and opportunities compete for attention, and redeploying resources has real impediments. Interpret the significance of new information so decision makers can act without being distracted by important-seeming but irrelevant data.',
+        i:'When prioritising and sequencing, don\'t attempt components that can\'t be delivered within constraints. Feedback from Delivery refines what\'s doable &mdash; what looked easy may prove hard or not worth the effort.',
+        d:'Use need, outcome, constraints, and risks to refine and prioritise stories; collaborate to agree which stories and process improvements are realistically achievable.' } },
+  { k:'Stimulate Collaboration and Continuous Improvement', c:'#ff8a5c', short:'Create an environment where everyone adds value continuously.',
+    full:'Create and contribute to an environment where all stakeholders contribute value on an ongoing basis, with continual collaboration between those who have the need and those delivering the solution. Continuously improve both the solution and the process; retrospectives help. Healthy teams have the trust and safety to surface improvements transparently.',
+    h:{ s:'Applied to organisational culture to grow high-performing teams. Collaboration gets harder as team count grows, so build channels that let customer-facing teams respond quickly while sharing learning. BAs add value by transferring relevant knowledge between teams without a central gatekeeper.',
+        i:'Decisions are informed by a cross-functional team that shares responsibility for giving the decision maker timely, relevant information. Teams collaborate to judge whether enough value has been delivered, whether to continue/change/cancel, and run retrospectives on how decisions were made.',
+        d:'Teams collaborate on analysis and delivery as part of daily work and in structured reviews and retrospectives. BAs bring problem definition, facilitation, and solution exploration to improving the delivery process.' } },
+  { k:'Avoid Waste', c:'#a29bfe', short:'Remove what adds no value; minimise what adds little.',
+    full:'Identify which activities add value and which don\'t. Anything not contributing directly to understanding the need and delivering a satisfying solution is waste &mdash; either activities with some value that don\'t directly satisfy the need (minimise these) or activities with no value (remove them). In practice: don\'t document before it\'s needed and then do just enough; avoid incomplete work that blocks downstream activity; commit at the <b>last responsible moment</b>; elicit, analyse, specify and validate with the same models; keep models as simple as their purpose allows; communicate clearly; attend to technical excellence &mdash; defects like unclear requirements are rework.',
+    h:{ s:'Waste occurs when decisions rest on bad information, when initiatives misalign, duplicate, or undermine one another, and when resources keep flowing to initiatives that no longer deliver value. Reduce it by giving initiative teams what\'s happening elsewhere, decision makers what they need to start or cancel initiatives, and leaders where resources will do most good.',
+        i:'Decisions informed by feedback rather than opinion are more accurate. Waste is avoided when everyone agrees which outputs will <em>not</em> be delivered because they aren\'t needed, and when initiatives are cancelled once the solution clearly won\'t satisfy the need &mdash; or already has.',
+        d:'Prioritise the backlog so stories delivering maximum value come first and lower-value areas are deferred &mdash; "maximising the work not done".' } },
+];
+
+const TECH = [
+  { n:'7.1', t:'Backlog Refinement', ctx:['Communication'], team:true, ext:false, h:['d'],
+    p:'Ensure backlog items have enough detail and clarity for the delivery team to complete an iteration.',
+    d:'A continuous technique to prepare product backlog items (PBIs), often ahead of a Planning Workshop. Incorporates ongoing feedback to revise requirements; refining based on stakeholder feedback is a critical differentiator of agile initiatives. Activities include Story Elaboration, Story Decomposition, prioritisation, and sequencing; large items are split to meet INVEST. Refinement is complete when the team has enough to execute.',
+    e:['<b>Backlog</b> &mdash; an ordered list of features, requirements, or items needed to achieve the outcome.','<b>Backlog item</b> &mdash; one or more requirements; items near the top are small and detailed, lower items larger and vaguer. Usually user stories, but also job stories or wireframes.','<b>Refinement meeting</b> &mdash; review the top items; confirm they\'re ready for the next iteration. Usually led by the product owner.','<b>Definition of Ready</b> &mdash; team-agreed criteria an item must satisfy to be "ready"; evolves as the team improves.'],
+    s:['Increases clarity and common understanding of PBIs.','Raises queries early, so iteration planning is more effective.','Gives the PO time to answer before the team starts.','Ensures items are sized appropriately.'],
+    l:['Inefficient if misaligned with team cadence (flow teams refine when items are added; iteration teams refine a few days before planning).','Often done by a few people, excluding other views.','Ineffective if vision and roadmap change often.'] },
+  { n:'7.2', t:'Behaviour Driven Development', ctx:['Requirements Management'], team:true, ext:false, h:['d'],
+    p:'Increase value, decrease waste, and improve communication by focusing on intended customer behaviour, expressed as real examples.',
+    d:'BDD uses a customer-readable, domain-specific language to specify the behaviour that satisfies the need, which speeds delivery (build only what\'s needed) and enables acceptance-test automation. The product owner provides examples; the BA asks "what if" to expose more scenarios. Discussions centre on concrete examples, giving more stable requirements than abstract models alone. "Three Amigos" sessions (PO, tester, developer) are common. BDD, ATDD, and Specification by Example are used interchangeably.',
+    e:['<b>Examples</b> &mdash; real business scenarios from stakeholders; not all will be in scope.','<b>Gherkin syntax</b> &mdash; <code>GIVEN</code> a situation, <code>WHEN</code> an event (only one), <code>THEN</code> an expected result; <code>AND</code> chains conditions. E.g. GIVEN I\'m in credit AND the ATM has cash, WHEN I request $20, THEN I receive $20 AND my balance drops by $20.','<b>Testing</b> &mdash; tools convert scenarios into automated tests, speeding verification and validation.'],
+    s:['Natural language, concrete examples anyone on the team understands.','Given-When-Then maps directly to Setup-Execute-Assert in TDD.','Lends itself to acceptance-test automation and good test cases.','Automated examples become living documentation and show traceability (useful for regulators).','Scenarios are easy to prioritise; can serve as a story\'s acceptance criteria.'],
+    l:['Easy to miss scenarios without someone asking "what if / what about".','Very complex business rules produce too many scenarios to manage without tooling.','Scenarios and tests must be kept current and readable.'] },
+  { n:'7.3', t:'Impact Mapping', ctx:['Process Analysis'], team:false, ext:true, h:[],
+    p:'Align stakeholders with organisational goals and the creation of customer value.',
+    d:'A visual map that breaks organisational goals into specific deliverables, keeping everyone focused on value creation (the <em>why</em>) instead of feature development (the <em>what</em>). Strengthens feedback loops between all three horizons by tying activities to goals. Lightweight: big picture plus specific detail. Best created in a face-to-face facilitated brainstorm.',
+    e:['<b>Goal</b> &mdash; why are we doing this?','<b>Actor</b> &mdash; who can influence the goals?','<b>Impact</b> &mdash; how will actors influence the goals?','<b>Deliverable</b> &mdash; what activities help actors achieve them?','<b>Process</b> &mdash; gather key stakeholders; make space for the visual; facilitate goals &rarr; actors &rarr; impacts &rarr; deliverables; keep it visible for revision.'],
+    s:['Focuses the team on goals rather than features.','Prevents scope creep and over-engineering.','Shows when outcomes are achieved &mdash; and when to stop.','Quick to create; large context from little information; goals are quantifiable.'],
+    l:['Best done face to face.','Must stay visual, accessible, and revisable.'] },
+  { n:'7.4', t:'Job Stories', ctx:['Requirements Management'], team:true, ext:false, h:[],
+    p:'Represent a backlog item or requirement as a job to be done by a stakeholder.',
+    d:'Job Stories focus on the stakeholder\'s <b>motivation</b> and give as much context as possible about their motivations, anxieties, and struggles &mdash; context that affects how they want the feature to be. They leave implementation details open and focus the team on the customer need.',
+    e:['<b>Format</b> &mdash; <code>When &lt;situation&gt; I want to &lt;motivation&gt; so I can &lt;expected outcome&gt;</code> (first or third person).','<b>Situation</b> &mdash; context for when the job needs doing; multiple roles go in the "when". Personas are deliberately omitted so the team focuses on real customers.','<b>Motivation</b> &mdash; internal and external forces; features and solutions are deliberately excluded.','<b>Expected outcome</b> &mdash; should satisfy or alleviate the motivation.'],
+    s:['Reduces role assumptions and persona bias.','Supports cause-and-effect scenarios.','Focuses on motivation, not implementation; good for UX design.','Easier to empathise with the stakeholder.','Can sit alongside User Stories: the job story gives motivation and outcome, the user story the feature.'],
+    l:['More verbose than User Stories.','Decompose into many smaller job stories that need refinement and prioritisation.','Mixing job and user stories on one backlog can confuse teams.'] },
+  { n:'7.5', t:'Kano Analysis', ctx:['Product Management'], team:false, ext:true, h:['i'],
+    p:'Understand which product characteristics will be a significant differentiator and drive customer satisfaction.',
+    d:'Classifies features as <b>threshold</b> (basic, expected), <b>performance</b> (more is better), <b>excitement</b> (customers don\'t know they want it until they see it), or <b>indifferent</b> (not wanted). Rates characteristics on two axes &mdash; functional and dysfunctional satisfaction &mdash; to decide what to implement before release and where the solution can be uniquely positioned.',
+    e:['<b>Threshold</b> &mdash; absence causes intense dissatisfaction, presence barely raises satisfaction. People expect them, so they don\'t mention them unless asked.','<b>Performance</b> &mdash; fairly linear satisfaction increase (speed, ease of use); the requirements most readily volunteered.','<b>Excitement</b> &mdash; exceeds expectations or wasn\'t known to be possible; stakeholders won\'t think to ask.','<b>Indifferent</b> &mdash; adds no value; not plotted.','<b>Two questions per feature</b> &mdash; functional: "how do you feel if it\'s present?"; dysfunctional: "how do you feel if it\'s absent?" Answers: like / expect / neutral / live with / dislike, mapped on a grid:'],
+    kano:true,
+    s:['Works for consumer and non-consumer solutions; targets widespread adoption.','Determines feature priority by desired market position.'],
+    l:['Only measures satisfaction &mdash; other factors are needed for backlog prioritisation.','Categories drift over time: excitement features become threshold expectations (think of early web search).'] },
+  { n:'7.6', t:'Minimal Viable Product', ctx:['Product Management'], team:true, ext:true, h:['s'],
+    p:'Avoid the cost and risk of building the wrong product by testing a hypothesis, reducing waste, and getting to customers faster for feedback.',
+    d:'The smallest set of features that delivers value to stakeholders and satisfies early adopters in the shortest time &mdash; core features sufficient to deploy and no more. Further features follow feedback. Applies to products, services (often to test willingness to pay), individual features (gauge demand), and differentiation (market test). Three steps: determine the problem and a hypothesis; identify the minimum feature set to test it (think creative, low-cost options); analyse validated learning to decide next steps.',
+    e:['<b>Target audience</b> &mdash; the market and likely early adopters, and their problems.','<b>Goal or hypothesis</b> &mdash; e.g. "this product will be quickly adopted by X" or "this feature will improve customer service".','<b>Mechanism to measure learning</b> &mdash; objective measures to interpret feedback and judge the MVP\'s success.','<b>Defined requirements</b> &mdash; the minimal set, chosen from audience, goal, and measurement; enough to validate, no more.'],
+    s:['Cheaper than building a full-featured product.','Reduces cost and risk via early customer feedback.','Avoids building what customers don\'t want.','Tests actual usage rather than relying on market research.'],
+    l:['Needs solid market analysis to pick the early-adopter feature set.','No formula &mdash; the feature set is a best guess.','It\'s about testing a hypothesis, not creating a minimal product.','Pointless for a clear or simple solution, where the MVP <em>is</em> the complete product.'] },
+  { n:'7.7', t:'Personas', ctx:['Understanding Your Customer'], team:true, ext:false, h:['i','d'],
+    p:'Understand and empathise with an intended stakeholder to align the solution with their need.',
+    d:'Fictional archetypes of how typical users interact with the solution, letting a team without direct customer access understand needs and focus on features of most value to a given persona. Described like a real person &mdash; name, personality, family, work background, skill, preferences, behaviours, attitudes, goals, needs &mdash; often with a picture and a "day in the life". Personas are ranked by who gains most from the solution.',
+    e:['<b>Short and long templates</b> &mdash; a one-page quick view, and an in-depth version expanded with user research.','<b>Name and image</b> &mdash; realistic, for relatability and empathy.','<b>Traits and characteristics</b> &mdash; e.g. an office manager depositing cash at day\'s end vs someone withdrawing small amounts.','<b>Motivations</b> &mdash; e.g. reducing fraud risk vs withdrawing the minimum needed.','<b>Needs</b> &mdash; from basic (safety, trust) to higher (acceptance). Needs are finite; wants are infinite.','<b>Differentiators</b> &mdash; what makes this persona distinct: generational, experiential, preference-based.'],
+    s:['Shared understanding of requirements for different user groups; feeds user stories.','Features can be prioritised by how well they serve one or more personas.','Gives a human face; builds empathy and compassion.','Stops stakeholders projecting their own biases onto the solution.'],
+    l:['Tendency to create a generic "everyone" persona that\'s not realistic.','Not a substitute for a real user; can distance the team from the user community.','Need regular review and updating.'] },
+  { n:'7.8', t:'Planning Workshops', ctx:['Communication'], team:true, ext:false, h:['s','i','d'],
+    p:'Determine what value can be delivered over an agreed time period.',
+    d:'Workshops that commit to delivering a set of features in a time period, enabling customer collaboration and response to feedback. Usually two levels: release planning before iterations begin, and detailed iteration planning. Usable at any horizon: at Strategy they focus on goals, metrics, and initiatives; at Initiative they produce release plans; at Delivery they open each iteration (or a regular review point in flow). Two parts: <b>What</b> (PO sets goal, outcome, date, top items) and <b>How</b> (team works out completion).',
+    e:['<b>Estimated and ordered backlog</b> &mdash; key input.','<b>Team velocity</b> &mdash; prior throughput enables realistic scheduling; Kanban uses WIP limits instead.','<b>Iteration goal or feature set</b> &mdash; a subset of the release or roadmap goal.','<b>Backlog item selection</b> &mdash; PO selects by value and velocity; includes non-feature items (bugs, environment setup, research).','<b>Task planning</b> &mdash; break items into assignable tasks.'],
+    s:['Frequent stakeholder collaboration on vision and evolution.','PO and stakeholders can steer every iteration.','Small iterations are easier to understand, estimate, and plan than big releases.','Plans adapt to feedback from incremental delivery; helps synchronise multiple teams; surfaces dependencies.'],
+    l:['Needs everyone present &mdash; hard with distributed teams.','Too little time means more conversations later.','Poorly understood items produce a sub-optimal plan.'] },
+  { n:'7.9', t:'Portfolio Kanban', ctx:['Communication'], team:true, ext:false, h:['s'],
+    p:'Manage strategic initiatives by increasing visibility of process, work-in-progress, decision criteria, and feedback loops.',
+    d:'Brings Kanban structure to analysis and decision making at the Strategy Horizon. A system to manage flow across the whole delivery cycle: visualise work, limit WIP to speed delivery and cut waste, manage flow by spotting bottlenecks and stalled items, make rules explicit, build in feedback loops, and increase collaboration. Each initiative is an item on the board with the metrics decision makers need to prioritise it.',
+    e:['<b>Board columns</b> &mdash; every step from idea to completion (e.g. waiting &rarr; market research &rarr; MVP for feedback &rarr; security review &rarr; available to customers).','<b>Done criteria per column</b> &mdash; explicit, shared.','<b>WIP limits per column</b> &mdash; based on real capacity; favour finishing over starting.','<b>Portfolio items</b> &mdash; name, short description, impact metrics.','<b>Refinement meeting</b> &mdash; regular, with all decision makers and affected POs; review board, focus areas, priorities.','<b>Visual</b> &mdash; accessible to anyone; physical boards have the lowest barrier to entry.'],
+    s:['Replicable at Initiative and Delivery Horizons.','Optimises the portfolio to respond to business and customer needs.','More feedback per item and per step; priorities visible to all.','Exposes bottlenecks; WIP limits increase overall flow.'],
+    l:['Only works when all initiatives follow the same flow.','Initiatives must be sized to move regularly; long-stuck items add no clarity.','One board per flow &mdash; multiple systems on one board overwhelm.'] },
+  { n:'7.10', t:'Product Roadmap', ctx:['Product Management'], team:true, ext:false, h:['s'],
+    p:'Communicate direction and progress toward the vision for a solution, measured by achieving stakeholders\' desired outcomes.',
+    d:'A strategic plan describing how a product is likely to grow, aligning to needs and securing budget. Focuses on product/feature/value delivered &mdash; not milestones or checkpoints. Expresses features as <b>now, next, and later</b>, and defines what the solution is and isn\'t.',
+    e:['<b>Defined vision and strategy</b> &mdash; what\'s included, the goal, and how it will be achieved.','<b>Desired outcomes</b> &mdash; clearly articulated for organisation and stakeholders.','<b>Product management team</b> &mdash; small, led by the PO; keeps the roadmap current, accessible, and tailored to audience.','<b>Themes</b> &mdash; collections of requirements, features, or stories.','<b>High-level requirements</b> &mdash; features that represent groups of stories.'],
+    s:['Visible and accessible to all stakeholders.','Creates a shared focus and unified view of direction.','Facilitates discussion of options and priorities.','Different views for different audiences (executives, team, external customers).'],
+    l:['Ineffective when vision and outcomes change frequently.','Easily misused as a date-driven milestone plan.','Time-consuming if overly detailed or many views are needed.'] },
+  { n:'7.11', t:'Purpose Alignment Model', ctx:['Product Management'], team:true, ext:false, h:['s','i'],
+    p:'Assess ideas in the context of customer and business value.',
+    d:'Rates features, processes, products, or capabilities on two dimensions: does it create <b>market differentiation</b>, and is it <b>mission critical</b>? Guides where to invest. Designed for competitive for-profit organisations, but governments and non-profits swap the differentiation axis for stakeholder value, mission alignment, or social good. It says what deserves strategic attention, not which strategy is right.',
+    e:['<b>Differentiating</b> (differentiating + critical) &mdash; invest; unique approach needed; hard for competitors to match.','<b>Parity</b> (critical, not differentiating) &mdash; finance, HR, payroll; adopt best practice, don\'t over-invest.','<b>Partner</b> (differentiating, not critical) &mdash; valued by customers but not needed to survive; a partner will likely do it better.','<b>Who cares?</b> (neither) &mdash; eliminate and reallocate.'],
+    s:['Simple &mdash; teachable to sponsors and users in minutes so they can assess ideas themselves.','Easy in a facilitated, collaborative setting.','Applies at any horizon; fast.'],
+    l:['Assumes positive intent in the business strategy.','Needs the right stakeholders present.','Simplicity can miss important nuance.'] },
+  { n:'7.12', t:'Real Options', ctx:['Product Management'], team:true, ext:false, h:['s','i','d'],
+    p:'Help determine when to make decisions.',
+    d:'Addresses aversion to uncertainty by defining the conditions under which to commit &mdash; neither waiting indefinitely nor deciding too early. Delay decisions to the <b>last responsible moment</b>, treating requirement details as options and the commitment point as when to elaborate. Three rules: <b>options have value; options expire; never commit early unless you know why.</b> Often used for refinement and prioritisation &mdash; it tells you when a decision is needed and when more detail is required.',
+    e:['<b>Options</b> &mdash; a user story (expires when the need changes), acceptance criteria, a hotel reservation (expires 6 p.m.), a business card. Not options: things you can\'t do, afford, do in time, buy/sell, or lack tools for.','<b>Commitments</b> &mdash; e.g. using the standard dev language; completing acceptance criteria before planning; delivering what you committed to. Breaking them costs trust, money, or risk.','<b>Options expiry</b> &mdash; conditional; knowing when options expire is the most important part, preventing decisions too soon or too late.','<b>Right / wrong / uncertain</b> &mdash; uncertainty pushes people to decide early, which raises the chance of being wrong. Gather information right up to the first expiry.'],
+    s:['Simplifies decision making with a small rule set.','Faster decisions: focus on the immediate, defer the rest until complexity resolves.','Tells you when, not how, to decide &mdash; broadly applicable.','Forces consideration of decision points and when information arrives.'],
+    l:['Counter-intuitive: analyses systems from outputs back to inputs.','Not a rote process &mdash; needs practice and study.'] },
+  { n:'7.13', t:'Relative Estimation', ctx:['Requirements Management'], team:true, ext:false, h:['s','i','d'],
+    p:'Predict future work from past experience, knowledge, complexity, size, and uncertainty of backlog items.',
+    d:'Builds on BABOK\'s Estimation technique for agile contexts. Estimating is progressive, aligned to iterations; early estimates are expected to be less accurate than later ones. Estimates guide internal decisions (cost and effort, priorities, schedule) and are not part of the solution. Teams assign <b>story points</b> on a Fibonacci scale based on knowledge, experience, complexity, size, and uncertainty. Points delivered per iteration = <b>velocity</b>, which stabilises over several iterations.',
+    e:['<b>Starting points</b> &mdash; an order of magnitude; a fixed team and iteration; or time estimates for a sample of stories, extrapolated.','<b>Planning Poker</b> &mdash; each member picks a number; if close, pick one and move on; if wide apart, discuss to uncover hidden assumptions, then agree.','<b>Silent Sizing</b> &mdash; team members take turns placing story cards along a wall from smallest to largest, then group and assign Fibonacci values per group.'],
+    s:['Simple, reliable, adaptive; gets more accurate each iteration.','Collaborative and consensus-based &mdash; good for the team.'],
+    l:['Accuracy depends on new stories resembling old ones.','Velocity depends on team composition; any change affects estimates.','Points are team-specific; cross-team comparison confuses stakeholders.','Easily misread as definitive time to complete.','Outsiders may fixate on estimates (output) over value (outcome).'] },
+  { n:'7.14', t:'Retrospectives', ctx:['Communication'], team:true, ext:false, h:['i','d'],
+    p:'Continuously improve by reflecting on what went well, what could be better, and how to improve the process.',
+    d:'The whole team reflects on recent deliveries, usually in two parts: reflect on the past iteration, then identify how to adapt. Held at key milestones &mdash; normally every iteration or release &mdash; so learning embeds quickly. Focused on process issues, never personal; includes a safety check. A neutral facilitator can help. Teams without fixed iterations schedule them regularly.',
+    e:['<b>Review previous action items</b> &mdash; progress and impact.','<b>Preparation</b> &mdash; team brings ideas from the iteration.','<b>Safety check</b> &mdash; agree to trust each other and assume good intent.','<b>Identify items</b> &mdash; commonly "went well / improve / interesting".','<b>Choose future actions</b> &mdash; pick improvements, set a timeline, assign an owner.'],
+    s:['Gives the team a collective voice on improvement.','Addresses issues early; empowers the team.','Can be self-facilitated.'],
+    l:['People may pretend to trust each other.','Worthless unless the team acts on the learning.','Most issues are already known to someone &mdash; mature teams fix things as they arise rather than batching them.','Unaddressed issues damage morale.'] },
+  { n:'7.15', t:'Reviews', ctx:['Communication'], team:false, ext:true, h:['d'],
+    p:'Demonstrate and inspect an increment with stakeholders to get feedback on whether the solution aligns with the need.',
+    d:'Builds on BABOK\'s Reviews technique. Showcase a working increment, formally or informally, led by the team that did the work and covering only completed work. Most effective when tied to the vision and goals. Eliciting feedback early and often is core to agile BA; reviews bring key stakeholders face to face with the work. The PO synthesises feedback into what to prioritise next and what goes on the backlog.',
+    e:['<b>Solution being delivered</b> &mdash; something tangible to react to.','<b>Stakeholders</b> &mdash; key stakeholders best placed to judge whether the increment satisfies the need; the whole team; the PO / customer representative who leads and ensures feedback is captured.'],
+    s:['Informal feedback; lightweight; regular cycle.','A checkpoint on whether the team is on track.','Face-to-face communication; early and continued engagement.'],
+    l:['Too many stakeholders &rarr; feedback too varied to act on.','In hierarchical cultures, senior opinions may outweigh better-informed ones.'] },
+  { n:'7.16', t:'Spikes', ctx:['Requirements Management'], team:true, ext:false, h:['d'],
+    p:'Time-box research, design, exploration, investigation, or prototyping to understand the effort needed for a backlog item or initiative.',
+    d:'When an item can\'t be estimated, a spike gains the knowledge needed to estimate it. Time-boxed with clear objectives and outcomes; exploratory, not a shippable product. Often technical &mdash; prototyping an approach, comparing interfaces or tools.',
+    e:['<b>Spike goal</b> &mdash; a defined outcome and a specific time-box within the iteration.','<b>Functional spike</b> &mdash; break a story down; find where risk and complexity sit.','<b>Technical spike</b> &mdash; feasibility or impact; the technical design needed.','<b>Exploratory spike</b> &mdash; organisational risks or impacts of an item or initiative.'],
+    s:['Focus and clarity via a specific activity and time-box.','Gives permission for value-driven research.','Early on, helps a new team share knowledge about each other and the technology.'],
+    l:['Time-box too long or item too large to have clear outcomes.','Misused as a label for follow-up conversations.','Frequent spikes signal that refinement isn\'t meeting the team\'s needs.'] },
+  { n:'7.17', t:'Storyboarding', ctx:['Understanding Your Customer'], team:true, ext:false, h:[],
+    p:'Describe a task, scenario, or story in terms of how stakeholders interact with the solution.',
+    d:'Also called dialogue map, customer journey, or navigation flow. Shows visually and textually the sequence of user interactions, used with use cases, user stories, and prototyping &mdash; especially when formal prototypes are unnecessary or too costly. Serves to elicit, organise, and validate requirements, communicate what to build, aid UI design, show variations, align stakeholders, and feed tests. A form of prototyping; contrast with story maps, which organise user activities.',
+    e:['<b>Scenarios</b> &mdash; all the ways a customer interacts, with steps, outcomes, likelihood, and complexity.','<b>Illustrations</b> &mdash; a series of boxes depicting each step.','<b>Textual explanation</b> &mdash; context per box.','<b>Create</b> &mdash; identify main scenarios; select the most common and most complex; illustrate; annotate with optional/unavailable interactions and notes; validate with stakeholders.'],
+    s:['Cuts the abstractness of use cases and user stories.','Quick and cheap compared with prototypes.','Intuitive; encourages participation.'],
+    l:['Looks different from the final product.','Easy to get bogged down in how rather than why.','Easy to miss rules or constraints while focused on visual flow.'] },
+  { n:'7.18', t:'Story Decomposition', ctx:['Requirements Management'], team:true, ext:false, h:['i','d'],
+    p:'Represent requirements at the appropriate level of detail, aligned to desired outcomes.',
+    d:'Defines requirements at progressively smaller granularity: broad context down to acceptance criteria for individual stories. Anything too large or unclear to elaborate, estimate, or deliver is ready for decomposition. The common approach is <b>breadth before depth</b>: goals &rarr; increments of customer value (minimal marketable features, MMFs) &rarr; stories &rarr; acceptance criteria. Done progressively; decomposing everything to the lowest level early is waste because stories will change.',
+    e:['<b>Solution goals</b> &mdash; the business drivers; the rationale all detail is assessed against.','<b>MMF / component</b> &mdash; logical groupings worth releasing; often the themes of a release.','<b>Story</b> &mdash; user story, job story, use case, or requirement.','<b>Acceptance criteria</b> &mdash; conditions of satisfaction; lists, specs, or acceptance tests. Detailed requirements live here.'],
+    s:['Avoids getting lost in story detail and losing the big picture.','Keeps traceability from functionality back to business objectives.','MMFs and epics help release planning, visibility, and coordination with change management and training.'],
+    l:['Anti-pattern: using it to revert to detailed up-front requirements. Know when to stop.','Decompose by customer-valued features &mdash; not by process step, architecture layer, or design/build/test phase.'] },
+  { n:'7.19', t:'Story Elaboration', ctx:['Requirements Management'], team:true, ext:false, h:['d'],
+    p:'Define the detailed design and acceptance criteria for a story as needed to deliver a working solution.',
+    d:'The lowest level of Story Decomposition &mdash; breaking a story into pieces of work and eliciting its most detailed requirements. An ongoing Delivery Horizon activity done <b>just-in-time and just-enough</b>, typically in a workshop with SMEs, the customer representative, the tester, and a BA who facilitates and challenges. Done ahead of the Planning Workshop for stories in scope for the next iteration.',
+    e:['<b>Elicitation</b> &mdash; drawing information from stakeholders and sources.','<b>Story Decomposition</b> &mdash; elaboration may reveal a story needs splitting.','<b>Acceptance criteria</b> &mdash; clarified, added, or removed.','<b>Optional outputs</b> &mdash; task breakdowns, examples and scenarios, low-fidelity models (data models, DFDs), screen/report mock-ups, I/O tables. Outcome: shared understanding of "Done" for the story.'],
+    s:['Less elicitation time and documentation by focusing on current features.','Avoids eliciting requirements for features that will change before implementation.','Keeps the team on the highest-priority feature.'],
+    l:['Incomplete elaboration &rarr; too much or too little detail.','Timing is hard: too early and it goes stale; too late and development is delayed.','Finding the right level of detail for build, test, and acceptance is challenging.'] },
+  { n:'7.20', t:'Story Mapping', ctx:['Requirements Management'], team:true, ext:false, h:['i','d'],
+    p:'Create understanding of product functionality and usage flow, and help prioritise delivery.',
+    d:'A visual, physical two-dimensional grid: sequence and groupings of key product aspects along the top, detail and priority of stories down each column. A decomposition technique that goes from end-to-end view to detailed stories. Acts as an information radiator during release planning; helps identify dependencies in the intended flow and supports risk assessment.',
+    e:['<b>Themes or activities</b> &mdash; the top row: the linear path a customer follows (for an ATM: activate &rarr; validate credentials &rarr; perform request &rarr; receive outcome &rarr; finish or repeat), across all personas.','<b>Stories or features</b> &mdash; under each theme; each may apply to one or more personas.','<b>Ranked priority order</b> &mdash; top-down under each theme, enabling release slicing.','<b>Facilitation</b> &mdash; self-facilitated group activity; PO decides when needed; themes and stories prepared in advance.'],
+    s:['Prevents getting mired in detail without end-to-end value.','Uses personas to prioritise what matters to specific users.','Can also show data flow through a system.'],
+    l:['Cumbersome for very large solutions; may need several maps.','Illustrates flow but doesn\'t analyse dependencies between requirements.','Less useful in non-process-oriented contexts.'] },
+  { n:'7.21', t:'User Stories', ctx:['Requirements Management'], team:true, ext:false, h:['d'],
+    p:'Convey a customer requirement to the delivery team.',
+    d:'Builds on BABOK\'s User Stories technique. A small, concise statement of a feature needed to deliver value, written by customers, POs, or BAs, and captured on the backlog. Stories invite exploration through conversation, tests, and supplementary models, and are easy to change. Quality is checked with <b>INVEST</b>: Independent, Negotiable, Valuable, Estimable, Sized appropriately, Testable. Not all backlog items need to be user stories.',
+    e:['<b>The 3Cs</b> &mdash; Card, Conversation, Confirmation.','<b>Card</b> &mdash; optional title as an active-verb goal phrase; format [WHO] [WHAT] [WHY]: <code>As a &lt;role&gt;, I need to &lt;feature&gt; so that &lt;value&gt;</code> or <code>In order to &lt;value&gt;, as a &lt;role&gt;, I need to &lt;behaviour&gt;</code>.','<b>Conversation</b> &mdash; the story deliberately doesn\'t capture everything; a good one provokes discussion.','<b>Confirmation</b> &mdash; acceptance criteria define the story\'s boundaries, the minimum function, and the basis for acceptance, regression, and exploratory tests.','<b>Management</b> &mdash; stories flow through Backlog Refinement, Product Roadmap, Story Decomposition, Story Elaboration, and Visioning.'],
+    s:['Small, implementable, testable slices &rarr; rapid delivery and frequent feedback.','Easily understood; learnable in minutes.','Collaboration on stories builds commitment and domain understanding.','Often supplemented with models: data model, business rules, mock-ups, context and state diagrams.'],
+    l:['Conversational approach can unsettle teams used to full specs up front.','Too many stories inflate the backlog; stories spawn stories.','Needs regular refinement and prioritisation.','Teams can lose the vision and roadmap &mdash; or focus on the WHAT and neglect the WHY.'] },
+  { n:'7.22', t:'Value Modelling', ctx:['Understanding Your Customer'], team:true, ext:false, h:[],
+    p:'Focus solution development on value delivery by tracing decisions to the stakeholder\'s value perspective.',
+    d:'Also called the Customer Value Model. Core structure: <b>Customer value = Benefits &minus; Cost</b>, where benefits are real (solves a problem) or perceived (status, reputation) and costs include price, risk, time, and travel. Steps: identify all stakeholders (customers, delivery team, sponsor); identify each group\'s needs and what provides value; identify the process to satisfy them. Works at any horizon &mdash; organisation-wide R&amp;D, marketing, and customers at Strategy; a specific initiative\'s customers at Initiative and Delivery.',
+    e:['<b>Customer</b> &mdash; the intended customer is in the model.','<b>Desired outcome</b> &mdash; the value to be earned.','<b>Example models</b> &mdash; Value Proposition Canvas (features aligned to customer needs); Flow Chart of Customer Value (stakeholder groups and processes); Means-Value Chart (features/activities aligned to a central value such as revenue); Value Model (partners/rivals, costs/revenues, competencies/proposition/customers).'],
+    s:['Usable at any horizon.','Structured the way the mind works &mdash; shows process and traceability with minimal documentation.','Structures decisions around value created.'],
+    l:['Research assumptions may omit nuance that would change the outcome.','Can be too complicated for teams wanting quick answers.'] },
+  { n:'7.23', t:'Value Stream Mapping', ctx:['Process Analysis'], team:true, ext:false, h:['s','i','d'],
+    p:'Provide a complete, fact-based, time-series view of the activities required to deliver a product or service to a customer.',
+    d:'A value stream is the flow of material and information needed to bring a solution to the customer; the map is a snapshot of it. Two types: <b>current state</b> (how it\'s actually executed; the starting point for improvement) and <b>future state</b> (after improvements). In agile settings it\'s usually simple and drawn on a whiteboard &mdash; used to re-engineer business processes around software, or to tune the development process itself (e.g. cut lead time from discovery to release).',
+    e:['<b>Prepare</b> &mdash; cross-functional team (SMEs plus developers, testers, ops, architects, vendors), a map owner, a defined product/service and scope, and the customer value to trace back from.','<b>Create current state</b> &mdash; name it; walk the stream backwards from the customer; capture information flow (orders, schedules, cycle and changeover times, operators); add time and cost per step; mark waste (redundant, low-value, automatable); validate.','<b>Analyse</b> &mdash; use Root Cause Analysis to separate value-added from non-value-added steps, and necessary (regulatory) from unnecessary (excess paperwork).','<b>Create future state</b> &mdash; mark improvement areas and measures; draw the stream with waste removed; use as the target state.','<b>Implement</b> &mdash; identify supporting changes (IT, training, changeover); implement. Technology changes become backlog items; the future state becomes the next current state.'],
+    s:['More comprehensive than a process flow diagram.','A blueprint for improvement.','Shared understanding of waste and bottlenecks; a common visual language.'],
+    l:['Harder to build than other visual models; can look daunting.','"Mapping paralysis" &mdash; perfecting the current state instead of improving.','Poor fit for knowledge-based or non-linear work.','Pushes a disruptive re-engineering approach; weak for ongoing improvement.'] },
+  { n:'7.24', t:'Visioning', ctx:['Communication'], team:true, ext:true, h:['s'],
+    p:'Determine the desired outcome for an initiative, worded concisely and approachably.',
+    d:'Creates aspirational guidance for judging whether efforts align to outcomes and add value, and a shared understanding of the strategy. Value contributes to business goals such as increasing or protecting revenue, creating opportunity, reducing cost or risk, meeting regulatory obligations, improving customer experience, executing marketing strategy, or developing staff. Example visions: "Put a man on the moon"; "All your music in one place in your pocket"; "Increase application completion and shorten time to complete through the web experience".',
+    e:['<b>Vision statement</b> &mdash; business value as a range of benefits; a simple statement, in images or words, conveying goal and scope. The conversation that produces it matters as much as the statement.','<b>Vision exercise</b> &mdash; facilitated with key stakeholders; Product Box and Product Differentiation Statement exercises are useful.','<b>Impact metrics</b> &mdash; objectively measurable indicators of whether the vision is being achieved; often correlating rather than causal.'],
+    s:['Specifies what\'s in and out for the product or initiative.','Focuses everyone on the organisational value sought.','Helps decide when enough has been delivered to stop.'],
+    l:['Can become a check-the-box exercise never revisited.','Worthless if not used for decisions and prioritisation.','Can create confirmation bias &mdash; attaching to one solution and ignoring evidence.','Quality depends on the group\'s imagination, diversity, trust, and collaboration.','Can narrow focus to one solution instead of exploring options.'] },
+];
+
+/* ---------------- NAV ---------------- */
+let current = 'overview';
+function showChapter(id) {
+  document.querySelectorAll('.chapter-section').forEach(s => s.classList.add('hidden'));
+  const sec = document.getElementById('sec-' + id);
+  if (sec) sec.classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.chapter === id));
+  current = id;
+  document.getElementById('sidebar').classList.remove('open');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  updateProgress();
+  try { history.replaceState(null, '', '#' + id); } catch (e) {}
+}
+function filterNav() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.style.display = n.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+function toggleCard(el) { el.classList.toggle('expanded'); }
+
+/* ---------------- PROGRESS ---------------- */
+const ORDER = ['overview','ch1','ch2','ch3','ch4','ch5','ch6','ch7','appb'];
+function updateProgress() {
+  const idx = ORDER.indexOf(current);
+  const base = idx / ORDER.length;
+  const doc = document.documentElement;
+  const scrollable = doc.scrollHeight - doc.clientHeight;
+  const within = scrollable > 0 ? (window.scrollY / scrollable) : 1;
+  const pct = Math.min(100, (base + within / ORDER.length) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+window.addEventListener('scroll', updateProgress);
+
+/* ---------------- HORIZON EXPLORER ---------------- */
+function showHorizon(h, el) {
+  document.querySelectorAll('#sec-ch3 .horizon-band').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.horizon-detail').forEach(d => d.classList.remove('show'));
+  el.classList.add('active');
+  document.getElementById('hz-' + h).classList.add('show');
+}
+
+/* ---------------- PLANNING ---------------- */
+function showPlan(p, btn) {
+  document.querySelectorAll('#planSeg button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('.plan-panel').forEach(x => x.classList.remove('show'));
+  document.getElementById('plan-' + p).classList.add('show');
+}
+
+/* ---------------- BACCM + PRINCIPLES PILLS ---------------- */
+function buildPills(gridId, detailId, data, renderDetail) {
+  const grid = document.getElementById(gridId);
+  const detail = document.getElementById(detailId);
+  grid.innerHTML = '';
+  data.forEach((d, i) => {
+    const el = document.createElement('div');
+    el.className = 'pill';
+    el.style.setProperty('--pc', d.c);
+    el.innerHTML = `<div class="pt">${d.k}</div><div class="pd">${d.short || d.def}</div>`;
+    el.onclick = () => {
+      const was = el.classList.contains('on');
+      grid.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
+      if (was) { detail.classList.remove('show'); return; }
+      el.classList.add('on');
+      detail.style.setProperty('--pc', d.c);
+      detail.innerHTML = renderDetail(d);
+      detail.classList.add('show');
+    };
+    grid.appendChild(el);
+  });
+}
+buildPills('baccmGrid', 'baccmDetail', BACCM, d => `<b>${d.k}</b> &mdash; ${d.def}<br><span style="color:var(--text-dim)">Agile principle:</span> ${d.p}`);
+buildPills('princGrid', 'princDetail', PRINCIPLES, d => `<b>${d.k}</b><br>${d.full}
+  <div style="margin-top:14px;display:grid;gap:8px">
+    <div><span class="tag tag-strategy" style="margin-top:0">Strategy</span> <span style="font-size:14.5px">${d.h.s}</span></div>
+    <div><span class="tag tag-initiative" style="margin-top:0">Initiative</span> <span style="font-size:14.5px">${d.h.i}</span></div>
+    <div><span class="tag tag-delivery" style="margin-top:0">Delivery</span> <span style="font-size:14.5px">${d.h.d}</span></div>
+  </div>`);
+
+/* principle cards inside each horizon chapter */
+function buildPrincCards(containerId, hz, borderClass) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = PRINCIPLES.map(p => `
+    <div class="point-card ${borderClass}" onclick="toggleCard(this)" style="border-left-color:${p.c}">
+      <div class="point-header"><div class="point-title">${p.k}</div><div class="point-toggle">+</div></div>
+      <div class="point-detail">${p.h[hz]}</div>
+    </div>`).join('');
+}
+buildPrincCards('princ-ch4', 's', 'border-4');
+buildPrincCards('princ-ch5', 'i', 'border-3');
+buildPrincCards('princ-ch6', 'd', 'border-5');
+
+/* ---------------- TECHNIQUES ---------------- */
+const filt = { h: new Set(), c: new Set() };
+let openTech = null;
+function toggleFilter(btn, kind) {
+  const v = kind === 'h' ? btn.dataset.h : btn.dataset.c;
+  if (filt[kind].has(v)) { filt[kind].delete(v); btn.classList.remove('on'); }
+  else { filt[kind].add(v); btn.classList.add('on'); }
+  renderTechniques();
+}
+function clearFilters() {
+  filt.h.clear(); filt.c.clear();
+  document.querySelectorAll('#sec-ch7 .chip').forEach(c => c.classList.remove('on'));
+  document.getElementById('techSearch').value = '';
+  renderTechniques();
+}
+function openTechniques(h) {
+  clearFilters();
+  showChapter('ch7');
+  const btn = document.querySelector(`#sec-ch7 .chip[data-h="${h}"]`);
+  if (btn) toggleFilter(btn, 'h');
+}
+const HNAME = { s:'Strategy', i:'Initiative', d:'Delivery' };
+const KANO = `
+  <div class="kano">
+    <div class="h">Func. &darr; / Dysf. &rarr;</div><div class="h">Like</div><div class="h">Expect</div><div class="h">Neutral</div><div class="h">Live with</div><div class="h">Dislike</div>
+    <div class="h">Like</div><div class="Q">Q</div><div class="E">E</div><div class="E">E</div><div class="E">E</div><div class="P">P</div>
+    <div class="h">Expect</div><div class="Q">R</div><div class="I">I</div><div class="I">I</div><div class="I">I</div><div class="T">T</div>
+    <div class="h">Neutral</div><div class="Q">R</div><div class="I">I</div><div class="I">I</div><div class="I">I</div><div class="T">T</div>
+    <div class="h">Live with</div><div class="Q">R</div><div class="I">I</div><div class="I">I</div><div class="I">I</div><div class="T">T</div>
+    <div class="h">Dislike</div><div class="Q">R</div><div class="Q">R</div><div class="Q">R</div><div class="Q">R</div><div class="Q">Q</div>
+  </div>
+  <div class="kano-key"><span style="color:#ff9ebf">E</span> Excitement &middot; <span style="color:#6fd3dd">P</span> Performance &middot; <span style="color:#ffe27a">T</span> Threshold &middot; <span>I</span> Indifferent &middot; <span style="color:#777">Q / R</span> Questionable / Reversed (answer doesn't make sense)</div>`;
+
+function renderTechniques() {
+  const q = (document.getElementById('techSearch').value || '').toLowerCase();
+  const grid = document.getElementById('techGrid');
+  const list = TECH.filter(t => {
+    if (filt.h.size && ![...filt.h].some(h => t.h.includes(h))) return false;
+    if (filt.c.size && !t.ctx.some(c => filt.c.has(c))) return false;
+    if (q) {
+      const hay = (t.t + ' ' + t.p + ' ' + t.d + ' ' + (t.e||[]).join(' ') + ' ' + t.ctx.join(' ')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  document.getElementById('techCount').textContent = `${list.length} of ${TECH.length} techniques`;
+  grid.innerHTML = list.map(t => {
+    const open = openTech === t.n;
+    const tags = t.h.map(h => `<span class="tag tag-${HNAME[h].toLowerCase()}">${HNAME[h]}</span>`).join('') +
+                 t.ctx.map(c => `<span class="tag tag-ctx">${c}</span>`).join('') +
+                 (t.team ? `<span class="tag tag-babok">Internal teams</span>` : '') +
+                 (t.ext ? `<span class="tag tag-babok">External stakeholders</span>` : '');
+    const body = open ? `
+      <div class="tc-body">
+        <span class="tc-close" onclick="event.stopPropagation(); openTech=null; renderTechniques();">Close &times;</span>
+        <h5>Description</h5><p>${t.d}</p>
+        <h5>Elements</h5><ul>${t.e.map(x => `<li>${x}</li>`).join('')}</ul>
+        ${t.kano ? KANO : ''}
+        <div class="two" style="margin-top:14px">
+          <div><h5 class="good">Strengths</h5><ul>${t.s.map(x => `<li>${x}</li>`).join('')}</ul></div>
+          <div><h5 class="bad">Limitations</h5><ul>${t.l.map(x => `<li>${x}</li>`).join('')}</ul></div>
+        </div>
+      </div>` : '';
+    return `<div class="tech-card ${open ? 'open' : ''}" data-n="${t.n}" onclick="openTechnique('${t.n}')">
+      <div class="tc-num">${t.n}</div>
+      <div class="tc-title">${t.t}</div>
+      <div class="tc-purpose">${t.p}</div>
+      <div class="tc-tags">${tags}</div>
+      ${body}
+    </div>`;
+  }).join('') || '<div style="color:var(--text-dim);padding:20px">No techniques match. Try clearing a filter.</div>';
+}
+function openTechnique(n) {
+  if (openTech === n) return;
+  openTech = n;
+  renderTechniques();
+  const el = document.querySelector(`.tech-card[data-n="${n}"]`);
+  if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
+}
+renderTechniques();
+
+/* ---------------- INIT ---------------- */
+(function init() {
+  const h = (location.hash || '').replace('#', '');
+  if (ORDER.includes(h)) showChapter(h);
+  updateProgress();
+})();
+</script>
+</body>
+</html>
